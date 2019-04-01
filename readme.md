@@ -27,3 +27,4 @@
 -   don't use hash, use datetime + file id
 -   if temp files are necessary the use a temp folder
 -   try a 4mb buffer write direct to base64 using amazon's b64 wrapper
+-   use pathlib
