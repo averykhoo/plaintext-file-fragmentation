@@ -1,10 +1,10 @@
 import os
-import shutil
+import tarfile
 
-from FTS_encode_decode.fragmented_file import fragment_file
+from .fragmented_file import fragment_file
 
 source_folder = os.path.abspath(r'temp')
-output_folder = os.path.abspath(r'b64_input')
+output_folder = os.path.abspath(r'a85_input')
 
 if __name__ == '__main__':
 
@@ -23,17 +23,18 @@ if __name__ == '__main__':
 
     if do_work:
         new_archive_name = os.path.basename(source_folder)
-        new_archive_path = os.path.abspath(new_archive_name + '.tar.bz2')
+        new_archive_path = os.path.abspath(os.path.join(source_folder, new_archive_name + '.tar.gz'))
 
         if not os.path.exists(new_archive_path):
             print('temporarily archiving <{SRC}> to <{OUT}>'.format(SRC=source_folder, OUT=new_archive_path))
-            shutil.make_archive(new_archive_name,
-                                'bztar',
-                                root_dir=os.path.dirname(new_archive_path),
-                                base_dir=source_folder)
+
+            with tarfile.open(new_archive_path, mode='w:gz') as tf:
+                tf.add(source_folder, arcname=os.path.basename(source_folder))
+        else:
+            print('<{OUT}> already exists, will work on existing file'.format(OUT=new_archive_path))
 
         print('fragmenting <{SRC}> to <{OUT}>'.format(SRC=new_archive_path, OUT=output_folder))
-        fragment_paths = fragment_file(new_archive_path, output_folder, max_size=1e6, size_range=3e5)
+        fragment_paths = fragment_file(new_archive_path, output_folder, max_size=1e6, size_range=5e5, verbose=True)
 
         print('deleting temp archive <{PATH}>'.format(PATH=new_archive_path))
         os.remove(new_archive_path)

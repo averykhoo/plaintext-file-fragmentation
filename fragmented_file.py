@@ -1,61 +1,21 @@
 """
 fragment a file into multiple smaller ascii files
-
-TODO: use start byte instead of index and total
-TODO: try except delete output so don't write corrupted file
 """
 
-import base64
-import fnmatch
+import glob
 import hashlib
 import json
 import os
 import random
-
 import sys
-
 import time
 
-
-def crawl(top, file_pattern='*'):
-    """generator giving all file paths"""
-    for root_path, dir_list, file_list in os.walk(top):
-        for file_name in fnmatch.filter(file_list, file_pattern):
-            yield os.path.join(root_path, file_name)
-
-
-def hash_file(file_path, hash_func='SHA1'):
-    hash_func = hash_func.strip().lower()
-    assert hash_func in ['md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512']
-    hash_obj = getattr(hashlib, hash_func)()
-    fd = os.open(file_path, (os.O_RDWR | os.O_BINARY))
-    for block in iter(lambda: os.read(fd, 65536), b''):
-        hash_obj.update(block)
-    os.close(fd)
-    return hash_obj.hexdigest().upper()
-
-
-def hash_content(content, hash_func='SHA1'):
-    hash_func = hash_func.strip().lower()
-    assert hash_func in ['md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512']
-    hash_obj = getattr(hashlib, hash_func)()
-    hash_obj.update(content)
-    return hash_obj.hexdigest().upper()
-
-
-def format_bytes(num):
-    unit = 0
-    while num >= 1024 and unit < 8:
-        num /= 1024.0
-        unit += 1
-    unit = ['Bytes', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB'][unit]
-    return ('%.2f %s' if num % 1 else '%d %s') % (num, unit)
+from .utils import a85decode, a85encode, hash_content, hash_file
 
 
 def fragment_file(file_path, output_dir, max_size=22000000, size_range=4000000, hash_func='SHA1', verbose=False):
     """
     see TextFragment for details
-    :param verbose:
     """
     # sanity checks
     assert os.path.isfile(file_path), 'input file does not exist'
@@ -77,7 +37,7 @@ def fragment_file(file_path, output_dir, max_size=22000000, size_range=4000000, 
     assert sum(fragment_sizes) == os.path.getsize(file_path)
 
     # get static values used in header info
-    file_name = base64.b64encode(os.path.basename(file_path).encode('utf8'))
+    file_name = a85encode(os.path.basename(file_path).encode('utf8'))
     file_hash = hash_file(file_path, hash_func=hash_func)
     file_size = os.path.getsize(file_path)
     if verbose:
@@ -120,13 +80,20 @@ def fragment_file(file_path, output_dir, max_size=22000000, size_range=4000000, 
                                  'fragment_size':  fragment_size,
                                  }, separators=(',', ':'))
 
-            # write fragment file (ascii)
+            # write fragment file
             fragment_path = os.path.join(output_dir, fragment_hash + '.txt')
             fragment_paths.append(fragment_path)
-            with open(fragment_path, 'w') as f_out:
-                f_out.write(magic_string + '\n')
-                f_out.write(header + '\n')
-                f_out.write(base64.b64encode(fragment_raw).decode('ascii') + '\n')
+            for _attempt in range(3):
+                try:
+                    with open(fragment_path + '.tempfile', 'w') as f_out:
+                        f_out.write(magic_string + '\n')
+                        f_out.write(header + '\n')
+                        f_out.write(a85encode(fragment_raw).decode('ascii') + '\n')
+                    os.rename(fragment_path + '.tempfile', fragment_path)
+                    break
+                except:
+                    if os.path.exists(fragment_path + '.tempfile'):
+                        os.remove(fragment_path + '.tempfile')
 
         # make sure the entire file has been processed
         assert len(f_in.read()) == 0
@@ -168,7 +135,7 @@ class TextFragment:
             self.content_pos = f.tell()
 
         # parse header
-        self.file_name = base64.b64decode(header['file_name']).decode('utf8')
+        self.file_name = a85decode(header['file_name']).decode('utf8')
         self.file_hash = header['file_hash']
         self.file_size = header['file_size']
         self.fragment_start = header['fragment_start']
@@ -188,7 +155,7 @@ class TextFragment:
         with open(self.fragment_path) as f:
             # read and decode content to bytes
             f.seek(self.content_pos)
-            decoded_content = base64.b64decode(f.readline().rstrip())
+            decoded_content = a85decode(f.readline().rstrip())
 
             # nothing left behind
             assert not f.read().strip()
@@ -388,7 +355,7 @@ class FragmentedFile:
 def restore_files(input_dir, output_dir, file_name=None, remove_originals=True, overwrite=False, verbose=False):
     fragmented_files = dict()
 
-    for path in crawl(input_dir, '*.txt'):
+    for path in glob.glob(os.path.join(input_dir, '*.txt')):
         text_fragment = TextFragment(path)
         fragmented_files.setdefault(text_fragment.file_hash, FragmentedFile(text_fragment)).add(text_fragment)
 
@@ -414,8 +381,8 @@ def restore_files(input_dir, output_dir, file_name=None, remove_originals=True, 
 if __name__ == '__main__':
     #  test parameters
     target_file = 'fragmented_file.py'
-    input_folder = 'b64_input'
-    output_folder = 'b64_output'
+    input_folder = 'a85_input'
+    output_folder = 'a85_output'
 
     # fragment
     fragment_file(target_file, input_folder, 2000, 1999)
