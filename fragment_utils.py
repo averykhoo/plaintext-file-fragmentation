@@ -22,16 +22,7 @@ def hash_content(content, hash_func='SHA1'):
     return hash_obj.hexdigest().upper()
 
 
-def format_bytes(num):
-    unit = 0
-    while num >= 1024 and unit < 8:
-        num /= 1024.0
-        unit += 1
-    unit = ['Bytes', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB'][unit]
-    return ('%.2f %s' if num % 1 else '%d %s') % (num, unit)
-
-
-bytes_types = (bytes, bytearray)  # Types acceptable as binary data
+BYTES_TYPES = (bytes, bytearray)  # Types acceptable as binary data
 
 
 def _bytes_from_decode_data(s):
@@ -40,18 +31,13 @@ def _bytes_from_decode_data(s):
             return s.encode('ascii')
         except UnicodeEncodeError:
             raise ValueError('string argument should contain only ASCII characters')
-    if isinstance(s, bytes_types):
+    if isinstance(s, BYTES_TYPES):
         return s
     try:
         return memoryview(s).tobytes()
     except TypeError:
-        raise TypeError("argument should be a bytes-like object or ASCII "
-                        "string, not %r" % s.__class__.__name__)
+        raise TypeError(f'argument should be a bytes-like object or ASCII string, not {s.__class__.__name__}')
 
-
-#
-# Ascii85 encoding/decoding
-#
 
 _a85chars = None
 _a85chars2 = None
@@ -61,7 +47,7 @@ _A85END = b"~>"
 
 def _85encode(b, chars, chars2, pad=False, foldnuls=False, foldspaces=False):
     # Helper function for a85encode and b85encode
-    if not isinstance(b, bytes_types):
+    if not isinstance(b, BYTES_TYPES):
         b = memoryview(b).tobytes()
 
     padding = (-len(b)) % 4
@@ -145,9 +131,7 @@ def a85decode(b, *, foldspaces=False, adobe=False, ignorechars=b' \t\n\r\v'):
     b = _bytes_from_decode_data(b)
     if adobe:
         if not b.endswith(_A85END):
-            raise ValueError(
-                "Ascii85 encoded byte sequences must end "
-                "with {!r}".format(_A85END)
+            raise ValueError(f'Ascii85 encoded byte sequences must end with {repr(_A85END)}'
             )
         if b.startswith(_A85START):
             b = b[2:-2]  # Strip off start/end markers
@@ -187,7 +171,7 @@ def a85decode(b, *, foldspaces=False, adobe=False, ignorechars=b' \t\n\r\v'):
             # Skip whitespace
             continue
         else:
-            raise ValueError('Non-Ascii85 digit found: %c' % x)
+            raise ValueError(f'Non-Ascii85 digit found: {repr(x)}')
 
     result = b''.join(decoded)
     padding = 4 - len(curr)

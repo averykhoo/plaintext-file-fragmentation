@@ -10,7 +10,7 @@ import random
 import sys
 import time
 
-from .utils import a85decode, a85encode, hash_content, hash_file
+from fragment_utils import a85decode, a85encode, hash_content, hash_file
 
 
 def fragment_file(file_path, output_dir, max_size=22000000, size_range=4000000, hash_func='SHA1', verbose=False):
@@ -41,10 +41,10 @@ def fragment_file(file_path, output_dir, max_size=22000000, size_range=4000000, 
     file_hash = hash_file(file_path, hash_func=hash_func)
     file_size = os.path.getsize(file_path)
     if verbose:
-        print('fragmentation target path is <{PATH}>'.format(PATH=file_path))
-        print('fragmentation target hash is <{HASH}>'.format(HASH=file_hash))
-        print('fragmentation target size is <{SIZE}>'.format(SIZE=file_size))
-        print('creating {NUM} fragments...'.format(NUM=len(fragment_sizes)))
+        print(f'fragmentation target path is <{file_path}>')
+        print(f'fragmentation target hash is <{file_hash}>')
+        print(f'fragmentation target size is <{file_size}>')
+        print(f'creating {len(fragment_sizes)} fragments...')
 
     # create output folder
     output_dir = os.path.abspath(output_dir)
@@ -68,8 +68,7 @@ def fragment_file(file_path, output_dir, max_size=22000000, size_range=4000000, 
             fragment_hash = hash_obj.hexdigest().upper()
 
             if verbose:
-                print('fragment {HASH} -> bytes {START} through {END}'
-                      .format(HASH=fragment_hash, START=fragment_start, END=fragment_start + fragment_size))
+                print(f'fragment {fragment_hash} -> bytes {fragment_start} through {fragment_start + fragment_size}')
 
             # generate json header
             header = json.dumps({'file_name':      file_name.decode('ascii'),
@@ -83,6 +82,7 @@ def fragment_file(file_path, output_dir, max_size=22000000, size_range=4000000, 
             # write fragment file
             fragment_path = os.path.join(output_dir, fragment_hash + '.txt')
             fragment_paths.append(fragment_path)
+            err = None
             for _attempt in range(3):
                 try:
                     with open(fragment_path + '.tempfile', 'w') as f_out:
@@ -91,9 +91,11 @@ def fragment_file(file_path, output_dir, max_size=22000000, size_range=4000000, 
                         f_out.write(a85encode(fragment_raw).decode('ascii') + '\n')
                     os.rename(fragment_path + '.tempfile', fragment_path)
                     break
-                except:
+                except Exception as err:
                     if os.path.exists(fragment_path + '.tempfile'):
                         os.remove(fragment_path + '.tempfile')
+            else:
+                raise err
 
         # make sure the entire file has been processed
         assert len(f_in.read()) == 0
@@ -175,7 +177,7 @@ class TextFragment:
         for retry in range(3):
             if os.path.exists(self.fragment_path):
                 if retry:
-                    print('retrying file deletion for <%s>...' % self.fragment_path)
+                    print(f'retrying file deletion for <{self.fragment_path}>...')
                     time.sleep(1)
                 try:
                     os.remove(self.fragment_path)
@@ -184,7 +186,7 @@ class TextFragment:
                 except FileNotFoundError:
                     pass
         if os.path.exists(self.fragment_path):
-            print('unable to delete fragment at path', self.fragment_path, file=sys.stderr)
+            print(f'unable to delete fragment at path {self.fragment_path}', file=sys.stderr)
             print(err, file=sys.stderr)
 
 
@@ -245,7 +247,7 @@ class FragmentedFile:
             # if progress can't be made, then fragments are missing
             if not candidates:
                 self.extraction_plan = None
-                print('file', self.file_hash, 'is missing a fragment starting at byte', curr_byte)
+                print(f'file {self.file_hash} is missing a fragment starting at byte {curr_byte}')
                 return None
 
             #
@@ -287,10 +289,10 @@ class FragmentedFile:
         assert extraction_plan is not None
 
         if verbose:
-            print('restoring', self.file_size, 'bytes from', len(extraction_plan), 'fragments of', self.file_name)
+            print(f'restoring {self.file_size} bytes from {len(extraction_plan)} fragments of {self.file_name}')
             unused = sum(len(fragments) for fragments in self.fragments.values()) - len(extraction_plan)
             if unused and remove_originals:
-                print(unused, 'extra fragment(s) will also be deleted')
+                print(f'{unused} extra fragment(s) will also be deleted')
 
         # where output file will be written
         if file_name is None:
@@ -315,7 +317,7 @@ class FragmentedFile:
             if not overwrite:
                 if verbose:
                     print('non-matching file already exists at output path, skipping')
-                print('file already exists:', file_path, file=sys.stderr)
+                print(f'file already exists: {file_path}', file=sys.stderr)
                 return None
 
         # start extraction
@@ -328,9 +330,9 @@ class FragmentedFile:
                 # write all fragments in order and update full content hash
                 for required_length, text_fragment in extraction_plan:
                     if verbose:
-                        print('restoring from', text_fragment.fragment_hash,
-                              '-> bytes', text_fragment.fragment_start + 1,
-                              'through', text_fragment.fragment_start + text_fragment.fragment_size)
+                        print(f'restoring from {text_fragment.fragment_hash}'
+                              f' -> bytes {text_fragment.fragment_start + 1}'
+                              f' through {text_fragment.fragment_start + text_fragment.fragment_size}')
                     assert f.tell() == text_fragment.fragment_start
                     content = text_fragment.read(required_length)
                     hash_obj.update(content)
@@ -368,32 +370,11 @@ def restore_files(input_dir, output_dir, file_name=None, remove_originals=True, 
                                                 overwrite=overwrite,
                                                 verbose=verbose)
             if verbose and out_path is not None:
-                print('saved', file_hash, 'to path:', out_path)
+                print(f'saved {file_hash} to path: {out_path}')
             elif verbose:
-                print('skipped restoration of', file_hash)
+                print(f'skipped restoration of {file_hash}')
 
             yield out_path
 
         elif verbose:
-            print('incomplete file', file_hash, 'with name', file_fragments.file_name)
-
-
-if __name__ == '__main__':
-    #  test parameters
-    target_file = 'fragmented_file.py'
-    input_folder = 'a85_input'
-    output_folder = 'a85_output'
-
-    # fragment
-    fragment_file(target_file, input_folder, 2000, 1999)
-    fragment_file(target_file, input_folder, 1234, 123)
-
-    #  restore
-    for path in restore_files(input_folder, output_folder, verbose=True):
-        print('output:', path)
-
-    # verify
-    assert hash_file(target_file) == hash_file(output_folder + '/' + target_file)
-
-    # cleanup
-    os.remove(output_folder + '/' + target_file)
+            print(f'incomplete file: {file_hash} with name {file_fragments.file_name}')
