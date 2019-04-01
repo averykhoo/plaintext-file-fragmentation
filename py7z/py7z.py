@@ -10,11 +10,15 @@ assert SYS_BITS in (32, 64)
 assert os.path.exists(EXE_PATH)
 
 
-def archive_create(files_and_folders, archive, password=None, encrypt_headers=False, overwrite=False):
+def archive_create(files_and_folders, archive, password=None, encrypt_headers=False, overwrite=False, verbose=3,
+                   volumes=None):
     """
     create 7z archive from some files and folders
     files and folders will be placed in the root of the archive
 
+    :param volumes: size of volume, eg '10k' or '2g'
+    :param verbose: loudness as int {0, 1, 2, 3}
+    :param overwrite: True or False
     :param files_and_folders: list of paths
     :param archive: path (or name)
     :param password: ascii only, excluding null bytes and double-quote char
@@ -23,8 +27,8 @@ def archive_create(files_and_folders, archive, password=None, encrypt_headers=Fa
     """
 
     # make paths absolute and unicode
-    archive_path = os.path.abspath(unicode(archive))
-    todo_paths = [os.path.abspath(unicode(item)) for item in files_and_folders]
+    archive_path = os.path.abspath(archive)
+    todo_paths = [os.path.abspath(item) for item in files_and_folders]
 
     # check validity of input files and folders
     seen = {}
@@ -44,10 +48,13 @@ def archive_create(files_and_folders, archive, password=None, encrypt_headers=Fa
     # base command (without input files/folders)
     command = [EXE_PATH,
                u'a',
+               archive_path,
                u'-t7z',
                u'-m0=lzma2',
                u'-mx=9',
-               archive_path]
+               u'-bb{VERBOSE}'.format(VERBOSE=verbose),
+               u'-bt',
+               ]
 
     # -t7z         -- type of archive             -> 7z
     # -m0=lzma2    -- compression algorithm       -> lzma2
@@ -59,6 +66,18 @@ def archive_create(files_and_folders, archive, password=None, encrypt_headers=Fa
     # -d=64m       -- dictionary size             -> 66Mb
     # -mhe         -- encrypt header              -> default off
     # -p{PASSWORD} -- set password = "{PASSWORD}" -> default unencrypted
+
+    # overwrite
+    if overwrite:
+        command += ['-aoa']
+
+    # split into volumes (bytes, kilobytes, megabytes, gigabytes)
+    # 7z a a.7z *.txt -v10k -v15k -v2m
+    # First volume will be 10 KB, second will be 15 KB, and all others will be 2 MB.
+    if volumes is not None:
+        assert type(volumes) is str and len(volumes) > 0
+        for size in volumes.strip().split():
+            command += [u'-v{SIZE}'.format(SIZE=size)]
 
     # add password and header encryption
     if password is not None:
@@ -77,23 +96,23 @@ def archive_create(files_and_folders, archive, password=None, encrypt_headers=Fa
     command += todo_paths
 
     # make the file, check that it's okay
-    ret_val = subprocess.check_output(command)
+    ret_val = subprocess.check_output(command).decode('cp1252')
     assert u'Everything is Ok' in ret_val, u'something went wrong: ' + ret_val
 
     # todo: parse ret_val into something useful
     return ret_val
 
 
-def archive_test(archive, password=None):
+def archive_test(archive, password=None, verbose=3):
     """
     test the integrity of an archive
 
+    :param verbose: loudness as int {0, 1, 2, 3}
     :param archive: path (or name)
     :param password: ascii only, excluding null bytes and double-quote char
     :return: output printed by 7zip
     """
-    # todo: make unicode friendly
-    archive_path = os.path.abspath(unicode(archive))
+    archive_path = os.path.abspath(archive)
 
     # set arbitrary password if none given
     if password is None:
@@ -109,19 +128,33 @@ def archive_test(archive, password=None):
     # always supply a password
     command = [EXE_PATH,
                u't',
+               archive_path,
                u'-p{PASSWORD}'.format(PASSWORD=password),
-               archive_path]
+               u'-bb{VERBOSE}'.format(VERBOSE=verbose),
+               u'-bt',
+               ]
 
     # make the file, check that it's okay
-    ret_val = subprocess.check_output(command)
+    ret_val = subprocess.check_output(command).decode('cp1252')
     assert u'Everything is Ok' in ret_val, u'something went wrong: ' + ret_val
 
     # todo: parse ret_val into something useful
     return ret_val
 
 
-def archive_extract(archive, into_dir=None, password=None, flat=False):
-    archive_path = os.path.abspath(unicode(archive))
+def archive_extract(archive, into_dir=None, password=None, flat=False, overwrite=True, verbose=3):
+    """
+    extract an archive
+    if a split-volumes archive, specify the first file (example.7z.001)
+    :param archive: path to archive
+    :param into_dir: where to extract to
+    :param password: ascii only, excluding null bytes and double-quote char
+    :param flat: extract all files into target dir ignoring directory structure
+    :param overwrite: True or False or advanced options
+    :param verbose: loudness as int {0, 1, 2, 3}
+    :return: output printed by 7zip
+    """
+    archive_path = os.path.abspath(archive)
     assert os.path.isfile(archive_path), u'archive does not exist at provided path'
 
     # set arbitrary password if none given
@@ -145,15 +178,30 @@ def archive_extract(archive, into_dir=None, password=None, flat=False):
     if u'"' in password:
         raise NotImplementedError(u'double-quote not supported')
 
+    if overwrite is True:
+        overwrite = 'a'
+    elif overwrite is False:
+        overwrite = 's'
+    assert overwrite in [
+        'a',  # overwrite without prompt
+        's',  # skip
+        'u',  # auto rename extracted file
+        't',  # auto rename existing file
+        ]
+
     # make command
     command = [EXE_PATH,
                u'xe'[flat],  # decide which flag to use
                u'-o{DIR}'.format(DIR=into_dir),
                u'-p{PASSWORD}'.format(PASSWORD=password),
-               archive_path]
+               u'-ao{OVERWRITE}'.format(OVERWRITE=overwrite),
+               u'-bb{VERBOSE}'.format(VERBOSE=verbose),
+               u'-bt',
+               archive_path,  # must be last argument for extraction
+               ]
 
     # make the file, check that it's okay
-    ret_val = subprocess.check_output(command)
+    ret_val = subprocess.check_output(command).decode('cp1252')
     assert u'Everything is Ok' in ret_val, u'something went wrong: ' + ret_val
 
     # todo: parse ret_val into something useful
@@ -161,21 +209,32 @@ def archive_extract(archive, into_dir=None, password=None, flat=False):
 
 
 if __name__ == '__main__':
+    import fnmatch
+
+
+    def crawl(top, file_pattern='*'):
+        for path, dir_list, file_list in os.walk(top):
+            for file_name in fnmatch.filter(file_list, file_pattern):
+                yield os.path.join(path, file_name)
+
+
     # cleanup
-    if os.path.exists(ur'passwd.7z'):
-        os.remove(ur'passwd.7z')
+    if os.path.exists(r'passwd.7z'):
+        os.remove(r'passwd.7z')
     # test: create archive
-    archive_create([ur'cmds.txt', ur'__init__.py'],
-                   ur'passwd.7z',
-                   password=('passwd'),
-                   encrypt_headers=True
-                   )
+    print(archive_create([r'cmds.txt', r'__init__.py'],
+                         r'passwd.7z',
+                         password=('passwd'),
+                         encrypt_headers=True,
+                         # volumes='512b'
+                         ))
     # test: test archive
-    archive_test(r'passwd.7z',
-                 password='passwd')
+    print(archive_test(r'passwd.7z',
+                       password='passwd'))
     # test: extract archive
-    archive_extract(r'passwd.7z',
-                    into_dir=r'passwd',
-                    password='passwd')
+    print(archive_extract(r'passwd.7z',
+                          into_dir=r'passwd',
+                          password='passwd'))
     # cleanup
-    os.remove(r'passwd.7z')
+    for path in crawl('.', 'passwd.7z.*'):
+        os.remove(path)
