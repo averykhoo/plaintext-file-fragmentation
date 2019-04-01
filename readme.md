@@ -5,7 +5,7 @@
 
 ##  how it works
 1.  gzip (using `tarfile`)
-2.  a85 encode
+2.  a85 encode(function included so it works for python 3.3 or lower)
 4.  automatically break into chunks
 5.  automatically combine chunks for decoding
 

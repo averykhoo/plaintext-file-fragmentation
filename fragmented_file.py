@@ -12,6 +12,8 @@ import time
 
 from fragment_utils import a85decode, a85encode, hash_content, hash_file
 
+MAGIC_STRING = 'text/a85+fragment'  # follow mime type convention because why not
+
 
 def fragment_file(file_path, output_dir, max_size=22000000, size_range=4000000, hash_func='SHA1', verbose=False):
     """
@@ -19,7 +21,6 @@ def fragment_file(file_path, output_dir, max_size=22000000, size_range=4000000, 
     """
     # sanity checks
     assert os.path.isfile(file_path), 'input file does not exist'
-    magic_string = 'text/fragment'
     hash_func = hash_func.strip().lower()
     assert hash_func in ['md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512']
     assert size_range < max_size
@@ -86,7 +87,7 @@ def fragment_file(file_path, output_dir, max_size=22000000, size_range=4000000, 
             for _attempt in range(3):
                 try:
                     with open(fragment_path + '.tempfile', 'w') as f_out:
-                        f_out.write(magic_string + '\n')
+                        f_out.write(MAGIC_STRING + '\n')
                         f_out.write(header + '\n')
                         f_out.write(a85encode(fragment_raw).decode('ascii') + '\n')
                     os.rename(fragment_path + '.tempfile', fragment_path)
@@ -107,7 +108,7 @@ def fragment_file(file_path, output_dir, max_size=22000000, size_range=4000000, 
 class TextFragment:
     """
     parse a fragment.txt file which has three lines of ascii
-    1st line is the string "text/fragment"
+    1st line is the MAGIC_STRING
     2nd line is a json header
     3rd line is base64-encoded binary content
     
@@ -132,7 +133,7 @@ class TextFragment:
 
         # verify magic string and read header
         with open(fragment_path) as f:
-            assert f.readline().strip() == 'text/fragment'
+            assert f.readline().strip() == MAGIC_STRING
             header = json.loads(f.readline())
             self.content_pos = f.tell()
 
