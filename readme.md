@@ -3,9 +3,15 @@
 ##  what
 -   breaks a file or folder into a bunch of ascii plaintext files
 
+##  usage
+-   put files/dirs in input folder
+-   run encode
+-   transfer text files to other place
+-   run decode
+
 ##  how it works
 1.  gzip (using `tarfile`)
-2.  a85 encode(function included so it works for python 3.3 or lower)
+2.  a85 encode
 4.  automatically break into chunks
 5.  automatically combine chunks for decoding
 

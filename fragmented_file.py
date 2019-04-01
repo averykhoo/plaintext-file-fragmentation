@@ -9,8 +9,9 @@ import os
 import random
 import sys
 import time
+from base64 import a85decode, a85encode
 
-from fragment_utils import a85decode, a85encode, hash_content, hash_file
+from fragment_utils import hash_content, hash_file  # , a85decode, a85encode
 
 MAGIC_STRING = 'text/a85+fragment'  # follow mime type convention because why not
 

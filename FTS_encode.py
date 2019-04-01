@@ -1,10 +1,11 @@
 import os
 import tarfile
 
-from .fragmented_file import fragment_file
+from fragmented_file import fragment_file
 
-source_folder = os.path.abspath(r'raw_input')
-output_folder = os.path.abspath(r'a85_encoded')
+this_folder = os.path.abspath(os.path.dirname(__file__))
+source_folder = os.path.join(this_folder, r'raw_input')
+output_folder = os.path.join(this_folder, r'a85_encoded')
 
 if __name__ == '__main__':
 
@@ -34,7 +35,7 @@ if __name__ == '__main__':
             print(f'<{new_archive_path}> already exists, will work on existing file')
 
         print(f'fragmenting <{new_archive_path}> to <{output_folder}>')
-        fragment_paths = fragment_file(new_archive_path, output_folder, max_size=1e6, size_range=5e5, verbose=True)
+        fragment_paths = fragment_file(new_archive_path, output_folder, max_size=25e6, size_range=5e5, verbose=True)
 
         print(f'deleting temp archive <{new_archive_path}>')
         os.remove(new_archive_path)
