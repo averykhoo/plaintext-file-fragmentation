@@ -1,7 +1,7 @@
 import os
 import tarfile
 
-from fragmented_file import fragment_file
+from .fragmented_file import fragment_file
 
 source_folder = os.path.abspath(r'raw_input')
 output_folder = os.path.abspath(r'a85_encoded')
