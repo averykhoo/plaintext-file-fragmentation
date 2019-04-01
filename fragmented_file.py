@@ -28,9 +28,10 @@ def hash_file(file_path, hash_func='SHA1'):
     hash_func = hash_func.strip().lower()
     assert hash_func in ['md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512']
     hash_obj = getattr(hashlib, hash_func)()
-    with os.open(file_path, (os.O_RDWR | os.O_BINARY)) as f:
-        for block in iter(lambda: os.read(f, 65536), b''):
-            hash_obj.update(block)
+    fd = os.open(file_path, (os.O_RDWR | os.O_BINARY))
+    for block in iter(lambda: os.read(fd, 65536), b''):
+        hash_obj.update(block)
+    os.close(fd)
     return hash_obj.hexdigest().upper()
 
 
@@ -51,9 +52,10 @@ def format_bytes(num):
     return ('%.2f %s' if num % 1 else '%d %s') % (num, unit)
 
 
-def fragment_file(file_path, output_dir, max_size=22000000, size_range=4000000, hash_func='SHA1'):
+def fragment_file(file_path, output_dir, max_size=22000000, size_range=4000000, hash_func='SHA1', verbose=False):
     """
     see TextFragment for details
+    :param verbose:
     """
     # sanity checks
     assert os.path.isfile(file_path), 'input file does not exist'
@@ -75,9 +77,14 @@ def fragment_file(file_path, output_dir, max_size=22000000, size_range=4000000, 
     assert sum(fragment_sizes) == os.path.getsize(file_path)
 
     # get static values used in header info
-    file_name = base64.b64encode(os.path.basename(file_path))
+    file_name = base64.b64encode(os.path.basename(file_path).encode('utf8'))
     file_hash = hash_file(file_path, hash_func=hash_func)
     file_size = os.path.getsize(file_path)
+    if verbose:
+        print('fragmentation target path is <{PATH}>'.format(PATH=file_path))
+        print('fragmentation target hash is <{HASH}>'.format(HASH=file_hash))
+        print('fragmentation target size is <{SIZE}>'.format(SIZE=file_size))
+        print('creating {NUM} fragments...'.format(NUM=len(fragment_sizes)))
 
     # create output folder
     output_dir = os.path.abspath(output_dir)
@@ -100,8 +107,12 @@ def fragment_file(file_path, output_dir, max_size=22000000, size_range=4000000, 
             hash_obj.update(fragment_raw)
             fragment_hash = hash_obj.hexdigest().upper()
 
+            if verbose:
+                print('fragment {HASH} -> bytes {START} through {END}'
+                      .format(HASH=fragment_hash, START=fragment_start, END=fragment_start + fragment_size))
+
             # generate json header
-            header = json.dumps({'file_name':      file_name,
+            header = json.dumps({'file_name':      file_name.decode('ascii'),
                                  'file_hash':      file_hash,
                                  'file_size':      file_size,
                                  'fragment_start': fragment_start,
@@ -157,7 +168,7 @@ class TextFragment:
             self.content_pos = f.tell()
 
         # parse header
-        self.file_name = base64.b64decode(header['file_name'])
+        self.file_name = base64.b64decode(header['file_name']).decode('utf8')
         self.file_hash = header['file_hash']
         self.file_size = header['file_size']
         self.fragment_start = header['fragment_start']
@@ -229,8 +240,8 @@ class FragmentedFile:
         self.fragments = dict()  # start byte -> [(end byte, fragment)]
         self.extraction_plan = None
 
-        # add first fragment
-        self.add(text_fragment)
+        # # add first fragment
+        # self.add(text_fragment)
 
     def add(self, text_fragment):
         """
@@ -312,7 +323,7 @@ class FragmentedFile:
             print('restoring', self.file_size, 'bytes from', len(extraction_plan), 'fragments of', self.file_name)
             unused = sum(len(fragments) for fragments in self.fragments.values()) - len(extraction_plan)
             if unused and remove_originals:
-                print(unused, 'extra fragments will also be deleted')
+                print(unused, 'extra fragment(s) will also be deleted')
 
         # where output file will be written
         if file_name is None:
