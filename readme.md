@@ -3,7 +3,7 @@
 ##  what
 -   breaks a file or folder into a bunch of ascii plaintext files
 
-##  version 0
-1.  zip
-2.  ffsj
-3.  base64 encode using certutil
+##  version 1
+1.  7-zip
+2.  b64 encode
+3.  manually break into chunks
