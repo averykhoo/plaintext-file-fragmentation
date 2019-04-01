@@ -1,24 +1,43 @@
 import os
+import shutil
 
-import py7z
-from .fragmented_file import fragment_file
+from FTS_encode_decode.fragmented_file import fragment_file
+
+source_folder = os.path.abspath(r'temp')
+output_folder = os.path.abspath(r'b64_input')
 
 if __name__ == '__main__':
-    source_folder = r'C:\Users\Avery\Desktop\stuff'
-    output_folder = r'b64_input'
 
-    new_archive_path = os.path.basename(source_folder) + u'.7z'
-    new_archive_password = u'password'
-    assert not os.path.exists(new_archive_path)
+    do_work = True
 
-    py7z.archive_create([source_folder],
-                        archive=new_archive_path,
-                        password=new_archive_password,
-                        encrypt_headers=True
-                        )
+    if not os.path.isdir(source_folder):
+        assert not os.path.exists(source_folder)
+        os.makedirs(source_folder)
+        print('source folder <{PATH}> does not exist, creating...'.format(PATH=source_folder))
+        do_work = False
 
-    py7z.archive_test(new_archive_path, new_archive_password)
+    if not os.path.isdir(output_folder):
+        assert not os.path.exists(output_folder)
+        os.makedirs(output_folder)
+        print('output folder <{PATH}> does not exist, creating...'.format(PATH=output_folder))
 
-    # fragment_file(new_archive_path, output_folder,max_size=1000000,size_range=300000)
-    fragment_file(new_archive_path, output_folder)
-    os.remove(new_archive_path)
+    if do_work:
+        new_archive_name = os.path.basename(source_folder)
+        new_archive_path = os.path.abspath(new_archive_name + '.tar.bz2')
+
+        if not os.path.exists(new_archive_path):
+            print('temporarily archiving <{SRC}> to <{OUT}>'.format(SRC=source_folder, OUT=new_archive_path))
+            shutil.make_archive(new_archive_name,
+                                'bztar',
+                                root_dir=os.path.dirname(new_archive_path),
+                                base_dir=source_folder)
+
+        print('fragmenting <{SRC}> to <{OUT}>'.format(SRC=new_archive_path, OUT=output_folder))
+        fragment_paths = fragment_file(new_archive_path, output_folder, max_size=1e6, size_range=3e5)
+
+        print('deleting temp archive <{PATH}>'.format(PATH=new_archive_path))
+        os.remove(new_archive_path)
+
+        print('created {N_FRAGS} fragments'.format(N_FRAGS=len(fragment_paths)))
+
+    print('done!')

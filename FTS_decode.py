@@ -1,27 +1,27 @@
 import os
+import shutil
 
-import py7z
-from .fragmented_file import restore_files
+from FTS_encode_decode.fragmented_file import restore_files
+
+source_folder = os.path.abspath(r'b64_input')
+output_folder = os.path.abspath(r'b64_output')
+archive_password = 'password'
 
 if __name__ == '__main__':
-    source_folder = os.path.abspath(r'b64_input')
-    if not os.path.exists(source_folder):
+
+    if not os.path.isdir(source_folder):
+        assert not os.path.exists(source_folder)
         os.makedirs(source_folder)
+        print('source folder <{PATH}> does not exist, creating...'.format(PATH=source_folder))
 
-    target_folder = os.path.abspath(r'b64_output')
-    if not os.path.exists(target_folder):
-        os.makedirs(target_folder)
+    if not os.path.isdir(output_folder):
+        assert not os.path.exists(output_folder)
+        os.makedirs(output_folder)
+        print('output folder <{PATH}> does not exist, creating...'.format(PATH=output_folder))
 
-    temp_archive_path = u'temp.7z'
-    temp_archive_password = u'password'
-    assert not os.path.exists(temp_archive_path)
-
-    for temp_archive_path in set(restore_files(source_folder, target_folder)):
-        py7z.archive_test(temp_archive_path, temp_archive_password)
-
-        py7z.archive_extract(temp_archive_path,
-                                   into_dir=target_folder,
-                                   password=temp_archive_password,
-                                   )
-
+    for temp_archive_path in restore_files(source_folder, output_folder, verbose=False):
+        print('restored <{PATH}>, unpacking archive...'.format(PATH=temp_archive_path))
+        shutil.unpack_archive(temp_archive_path, extract_dir=output_folder, format='bztar')
         os.remove(temp_archive_path)
+
+    print('done!')
