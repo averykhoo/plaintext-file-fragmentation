@@ -36,7 +36,7 @@ def _bytes_from_decode_data(s):
     try:
         return memoryview(s).tobytes()
     except TypeError:
-        raise TypeError(f'argument should be a bytes-like object or ASCII string, not {s.__class__.__name__}')
+        raise TypeError('argument should be a bytes-like object or ASCII string, not {}').format(s.__class__.__name__)
 
 
 _a85chars = None
@@ -131,7 +131,7 @@ def a85decode(b, *, foldspaces=False, adobe=False, ignorechars=b' \t\n\r\v'):
     b = _bytes_from_decode_data(b)
     if adobe:
         if not b.endswith(_A85END):
-            raise ValueError(f'Ascii85 encoded byte sequences must end with {repr(_A85END)}'
+            raise ValueError('Ascii85 encoded byte sequences must end with {}'.format(repr(_A85END))
             )
         if b.startswith(_A85START):
             b = b[2:-2]  # Strip off start/end markers
@@ -171,7 +171,7 @@ def a85decode(b, *, foldspaces=False, adobe=False, ignorechars=b' \t\n\r\v'):
             # Skip whitespace
             continue
         else:
-            raise ValueError(f'Non-Ascii85 digit found: {repr(x)}')
+            raise ValueError('Non-Ascii85 digit found: {}'.format(repr(x)))
 
     result = b''.join(decoded)
     padding = 4 - len(curr)
