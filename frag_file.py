@@ -360,7 +360,7 @@ class FragmentedFile:
         return file_path
 
 
-def restore_files(input_dir, output_dir, file_name=None, remove_originals=True, overwrite=False, verbose=False):
+def restore_files(input_dir, file_name=None, remove_originals=True, overwrite=False, verbose=False):
     fragmented_files = dict()
 
     for path in glob.glob(os.path.join(input_dir, '*.txt')):
@@ -370,7 +370,7 @@ def restore_files(input_dir, output_dir, file_name=None, remove_originals=True, 
     for file_hash, file_fragments in fragmented_files.items():
         assert isinstance(file_fragments, FragmentedFile)
         if file_fragments.get_extraction_plan() is not None:
-            out_path = file_fragments.make_file(output_dir=output_dir,
+            out_path = file_fragments.make_file(output_dir=input_dir,
                                                 file_name=file_name,
                                                 remove_originals=remove_originals,
                                                 overwrite=overwrite,

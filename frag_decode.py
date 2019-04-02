@@ -19,12 +19,12 @@ if __name__ == '__main__':
         os.makedirs(output_folder)
         print('output folder <{}> does not exist, creating...'.format(output_folder))
 
-    for temp_archive_path in restore_files(source_folder, output_folder, verbose=True):
+    for temp_archive_path in restore_files(source_folder, verbose=True):
         print('restored to <{}>, unpacking archive...'.format(temp_archive_path))
         with tarfile.open(temp_archive_path, mode='r:gz') as tf:
             tf.extractall(path=output_folder)
 
         print('unpacked <{}>, deleting archive...'.format(temp_archive_path))
-        os.remove(temp_archive_path)
+        # os.remove(temp_archive_path)
 
     print('done!')

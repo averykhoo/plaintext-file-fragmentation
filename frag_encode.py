@@ -1,7 +1,6 @@
+import datetime
 import os
 import tarfile
-
-import datetime
 
 from frag_file import fragment_file
 
@@ -20,24 +19,27 @@ if __name__ == '__main__':
         os.makedirs(output_folder)
         print('output folder <{}> does not exist, creating...'.format(output_folder))
 
-    if len(os.listdir(source_folder)) == 0:
-        new_archive_name = datetime.datetime.now().strftime('%Y-%m-%d--%H-%M-%S') #os.path.basename(source_folder)
-        new_archive_path = os.path.abspath(os.path.join(source_folder, new_archive_name + '.tar.gz'))
+    if len(os.listdir(source_folder)) > 0:
+        temp_archive_name = datetime.datetime.now().strftime('%Y-%m-%d--%H-%M-%S')
+        temp_archive_path = os.path.abspath(os.path.join(output_folder, temp_archive_name + '.tar.gz'))
 
-        if not os.path.exists(new_archive_path):
-            print('temporarily archiving <{}> to <{}>'.format(source_folder,new_archive_path))
+        if not os.path.exists(temp_archive_path):
+            print('temporarily archiving <{}> to <{}>'.format(source_folder, temp_archive_path))
 
-            with tarfile.open(new_archive_path, mode='w:gz') as tf:
-                tf.add(source_folder, arcname=os.path.basename(source_folder))
+            with tarfile.open(temp_archive_path, mode='w:gz') as tf:
+                tf.add(source_folder, arcname=temp_archive_name)
         else:
-            print('<{}> already exists, will work on existing file'.format(new_archive_path))
+            print('<{}> already exists, will work on existing file'.format(temp_archive_path))
 
-        print('fragmenting <{}> to <{}>'.format(new_archive_path,output_folder))
-        fragment_paths = fragment_file(new_archive_path, output_folder, max_size=25e6, size_range=5e5, verbose=True)
+        print('fragmenting <{}> to <{}>'.format(temp_archive_path, output_folder))
+        fragment_paths = fragment_file(temp_archive_path, output_folder, max_size=25e6, size_range=5e5, verbose=True)
 
-        print('deleting temp archive <{}>'.format(new_archive_path))
-        os.remove(new_archive_path)
+        print('deleting temp archive <{}>'.format(temp_archive_path))
+        os.remove(temp_archive_path)
 
         print('created {} fragments'.format(len(fragment_paths)))
+
+    else:
+        print('nothing to encode')
 
     print('done!')
