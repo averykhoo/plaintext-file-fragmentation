@@ -17,9 +17,5 @@
 
 ##  todo
 -   don't use tempfiles if possible, gzip and b64 encode/decode on the fly
--   provide receipts when zipping/unzipping?
--   better logging
--   write to partial file then rename for atomicity?
--   newlines every 75chars? (multiple of 5)
--   try a 4mb buffer write direct to base64 using amazon's b64 wrapper
--   use pathlib?
+    -   try a 4mb buffer write direct to base64 using amazon's b64 wrapper
+-   setup logging, or provide receipts when zipping/unzipping?

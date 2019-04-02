@@ -20,6 +20,8 @@ if __name__ == '__main__':
         print('output folder <{}> does not exist, creating...'.format(output_folder))
 
     for temp_archive_path in restore_files(source_folder, verbose=True):
+        if temp_archive_path is None:
+            continue
         print('restored to <{}>, unpacking archive...'.format(temp_archive_path))
         with tarfile.open(temp_archive_path, mode='r:gz') as tf:
             tf.extractall(path=output_folder)

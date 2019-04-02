@@ -89,7 +89,7 @@ def fragment_file(file_path, output_dir, max_size=22000000, size_range=4000000, 
             err = None
             for _attempt in range(3):
                 try:
-                    with open(fragment_path + '.tempfile', 'w') as f_out:
+                    with open(fragment_path + '.tempfile', mode='wt', encoding='ascii', newline='\n') as f_out:
                         f_out.write(MAGIC_STRING + '\n')
                         f_out.write(header + '\n')
                         f_out.write(a85encode(fragment_raw).decode('ascii') + '\n')
@@ -135,7 +135,7 @@ class TextFragment:
         assert self.hash_func in ['md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512']
 
         # verify magic string and read header
-        with open(fragment_path) as f:
+        with open(fragment_path, mode='rt', encoding='ascii') as f:
             assert f.readline().strip() == MAGIC_STRING
             header = json.loads(f.readline())
             self.content_pos = f.tell()
@@ -158,7 +158,7 @@ class TextFragment:
             length = self.fragment_size
         assert length <= self.fragment_size
 
-        with open(self.fragment_path) as f:
+        with open(self.fragment_path, mode='rt', encoding='ascii') as f:
             # read and decode content to bytes
             f.seek(self.content_pos)
             decoded_content = a85decode(f.readline().rstrip())

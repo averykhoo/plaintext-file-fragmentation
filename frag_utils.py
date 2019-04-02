@@ -36,11 +36,11 @@ def _bytes_from_decode_data(s):
     try:
         return memoryview(s).tobytes()
     except TypeError:
-        raise TypeError('argument should be a bytes-like object or ASCII string, not {}').format(s.__class__.__name__)
+        raise TypeError('argument should be a bytes-like object or ASCII string, not {}'.format(s.__class__.__name__))
 
 
-_a85chars = None
-_a85chars2 = None
+_a85chars = [bytes((i,)) for i in range(33, 118)]
+_a85chars2 = [(a + b) for a in _a85chars for b in _a85chars]
 _A85START = b"<~"
 _A85END = b"~>"
 
@@ -87,12 +87,6 @@ def a85encode(b, *, foldspaces=False, wrapcol=0, pad=False, adobe=False):
     adobe controls whether the encoded byte sequence is framed with <~ and ~>,
     which is used by the Adobe implementation.
     """
-    global _a85chars, _a85chars2
-    # Delay the initialization of tables to not waste memory
-    # if the function is never called
-    if _a85chars is None:
-        _a85chars = [bytes((i,)) for i in range(33, 118)]
-        _a85chars2 = [(a + b) for a in _a85chars for b in _a85chars]
 
     result = _85encode(b, _a85chars, _a85chars2, pad, True, foldspaces)
 
@@ -141,7 +135,7 @@ def a85decode(b, *, foldspaces=False, adobe=False, ignorechars=b' \t\n\r\v'):
     # We have to go through this stepwise, so as to ignore spaces and handle
     # special short sequences
     #
-    packI = struct.Struct('!I').pack
+    pack_i = struct.Struct('!I').pack
     decoded = []
     decoded_append = decoded.append
     curr = []
@@ -152,10 +146,10 @@ def a85decode(b, *, foldspaces=False, adobe=False, ignorechars=b' \t\n\r\v'):
             curr_append(x)
             if len(curr) == 5:
                 acc = 0
-                for x in curr:
-                    acc = 85 * acc + (x - 33)
+                for y in curr:
+                    acc = 85 * acc + (y - 33)
                 try:
-                    decoded_append(packI(acc))
+                    decoded_append(pack_i(acc))
                 except struct.error:
                     raise ValueError('Ascii85 overflow') from None
                 curr_clear()
