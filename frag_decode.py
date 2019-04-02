@@ -8,7 +8,6 @@ source_folder = os.path.join(this_folder, r'ascii85_encoded')
 output_folder = os.path.join(this_folder, r'output_decoded')
 
 if __name__ == '__main__':
-
     # create folder to place plaintext fragment files
     if not os.path.isdir(source_folder):
         assert not os.path.exists(source_folder)

@@ -19,3 +19,8 @@
 
 ##  to-do
 -   setup logging, or provide receipts when zipping/unzipping?
+
+##  manual alternative
+1.  zip your file
+2.  `certutil -encode -v archive.zip b64.txt`
+3.  `certutil -decode -v b64.txt archive.zip`
