@@ -4,7 +4,7 @@ import tarfile
 from frag_file import restore_files
 
 this_folder = os.path.abspath(os.path.dirname(__file__))
-source_folder = os.path.join(this_folder, r'a85_encoded')
+source_folder = os.path.join(this_folder, r'ascii85_encoded')
 output_folder = os.path.join(this_folder, r'output_decoded')
 
 if __name__ == '__main__':
@@ -25,6 +25,6 @@ if __name__ == '__main__':
             tf.extractall(path=output_folder)
 
         print('unpacked <{}>, deleting archive...'.format(temp_archive_path))
-        # os.remove(temp_archive_path)
+        os.remove(temp_archive_path)
 
     print('done!')

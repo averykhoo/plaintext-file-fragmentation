@@ -132,7 +132,7 @@ def a85decode(b, *, foldspaces=False, adobe=False, ignorechars=b' \t\n\r\v'):
     if adobe:
         if not b.endswith(_A85END):
             raise ValueError('Ascii85 encoded byte sequences must end with {}'.format(repr(_A85END))
-            )
+                             )
         if b.startswith(_A85START):
             b = b[2:-2]  # Strip off start/end markers
         else:
