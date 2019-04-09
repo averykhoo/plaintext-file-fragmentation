@@ -40,7 +40,11 @@ def _bytes_from_decode_data(s):
         raise TypeError('argument should be a bytes-like object or ASCII string, not {}'.format(s.__class__.__name__))
 
 
-_a85chars = [bytes((i,)) for i in range(33, 118)]
+_a85chars = [b'!', b'"', b'#', b'$', b'%', b'&', b"'", b'(', b')', b'*', b'+', b',', b'-', b'.', b'/', b'0', b'1',
+             b'2', b'3', b'4', b'5', b'6', b'7', b'8', b'9', b':', b';', b'<', b'=', b'>', b'?', b'@', b'A', b'B',
+             b'C', b'D', b'E', b'F', b'G', b'H', b'I', b'J', b'K', b'L', b'M', b'N', b'O', b'P', b'Q', b'R', b'S',
+             b'T', b'U', b'V', b'W', b'X', b'Y', b'Z', b'[', b'\\', b']', b'^', b'_', b'`', b'a', b'b', b'c', b'd',
+             b'e', b'f', b'g', b'h', b'i', b'j', b'k', b'l', b'm', b'n', b'o', b'p', b'q', b'r', b's', b't', b'u']
 _a85chars2 = [(a + b) for a in _a85chars for b in _a85chars]
 _A85START = b"<~"
 _A85END = b"~>"
