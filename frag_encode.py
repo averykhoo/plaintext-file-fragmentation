@@ -47,7 +47,8 @@ if __name__ == '__main__':
         # remove gzip file, archive input folder
         print('deleting temp archive <{}>'.format(archive_path))
         os.remove(archive_path)
-        os.rename(source_folder, archive_name)
+        os.rename(source_folder, source_folder + '--' + archive_name)
+
         os.makedirs(source_folder)
 
         print('created {} fragments'.format(len(fragment_paths)))

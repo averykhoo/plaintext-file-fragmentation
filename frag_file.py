@@ -1,14 +1,15 @@
 """
 fragment a file into multiple smaller ascii files
 """
-
 import glob
 import hashlib
+import io
 import json
 import os
 import random
 import sys
 import time
+import warnings
 
 from frag_utils import a85decode, a85encode  # from base64 import a85decode, a85encode
 from frag_utils import hash_content, hash_file
@@ -56,7 +57,7 @@ def fragment_file(file_path, output_dir, max_size=22000000, size_range=4000000, 
 
     # iterate through input file only once
     fragment_paths = []
-    with open(file_path, 'rb') as f_in:
+    with io.open(file_path, 'rb') as f_in:
         for fragment_size in fragment_sizes:
             # get start byte
             fragment_start = f_in.tell()
@@ -89,15 +90,16 @@ def fragment_file(file_path, output_dir, max_size=22000000, size_range=4000000, 
             err = None
             for _attempt in range(3):
                 try:
-                    with open(fragment_path + '.tempfile', mode='wt', encoding='ascii', newline='\n') as f_out:
-                        f_out.write(MAGIC_STRING + '\n')
-                        f_out.write(header + '\n')
-                        f_out.write(a85encode(fragment_raw).decode('ascii') + '\n')
+                    with io.open(fragment_path + '.tempfile', mode='wt', encoding='ascii', newline='\n') as f_out:
+                        f_out.write(MAGIC_STRING + u'\n')
+                        f_out.write(header + u'\n')
+                        f_out.write(a85encode(fragment_raw).decode('ascii') + u'\n')
                     os.rename(fragment_path + '.tempfile', fragment_path)
                     break
                 except Exception as err:
                     if os.path.exists(fragment_path + '.tempfile'):
                         os.remove(fragment_path + '.tempfile')
+                    raise
             else:
                 raise err
 
@@ -135,7 +137,7 @@ class TextFragment:
         assert self.hash_func in ['md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512']
 
         # verify magic string and read header
-        with open(fragment_path, mode='rt', encoding='ascii') as f:
+        with io.open(fragment_path, mode='rt', encoding='ascii') as f:
             assert f.readline().strip() == MAGIC_STRING
             header = json.loads(f.readline())
             self.content_pos = f.tell()
@@ -158,7 +160,7 @@ class TextFragment:
             length = self.fragment_size
         assert length <= self.fragment_size
 
-        with open(self.fragment_path, mode='rt', encoding='ascii') as f:
+        with io.open(self.fragment_path, mode='rt', encoding='ascii') as f:
             # read and decode content to bytes
             f.seek(self.content_pos)
             decoded_content = a85decode(f.readline().rstrip())
@@ -190,8 +192,8 @@ class TextFragment:
                 except FileNotFoundError:
                     pass
         if os.path.exists(self.fragment_path):
-            print('unable to delete fragment at path {}'.format(self.fragment_path), file=sys.stderr)
-            print(err, file=sys.stderr)
+            warnings.warn('unable to delete fragment at path {}'.format(self.fragment_path))
+            warnings.warn(err)
 
 
 class FragmentedFile:
@@ -323,13 +325,13 @@ class FragmentedFile:
             if not overwrite:
                 if verbose:
                     print('non-matching file already exists at output path, skipping')
-                print('file already exists: {}'.format(file_path), file=sys.stderr)
+                warnings.warn('file already exists: {}'.format(file_path))
                 return None
 
         # start extraction
         temp_path = file_path + '.partial'
         try:
-            with open(temp_path, 'wb') as f:
+            with io.open(temp_path, 'wb') as f:
                 # init full content hash
                 hash_obj = getattr(hashlib, self.hash_func)()
 

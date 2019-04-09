@@ -26,7 +26,8 @@ BYTES_TYPES = (bytes, bytearray)  # Types acceptable as binary data
 
 
 def _bytes_from_decode_data(s):
-    if isinstance(s, str):
+    # if isinstance(s, str):
+    if hasattr(s, 'encode'):
         try:
             return s.encode('ascii')
         except UnicodeEncodeError:
@@ -70,7 +71,7 @@ def _85encode(b, chars, chars2, pad=False, foldnuls=False, foldspaces=False):
     return b''.join(chunks)
 
 
-def a85encode(b, *, foldspaces=False, wrapcol=0, pad=False, adobe=False):
+def a85encode(b, foldspaces=False, wrapcol=0, pad=False, adobe=False):
     """Encode bytes-like object b using Ascii85 and return a bytes object.
 
     foldspaces is an optional flag that uses the special short sequence 'y'
@@ -106,7 +107,7 @@ def a85encode(b, *, foldspaces=False, wrapcol=0, pad=False, adobe=False):
     return result
 
 
-def a85decode(b, *, foldspaces=False, adobe=False, ignorechars=b' \t\n\r\v'):
+def a85decode(b, foldspaces=False, adobe=False, ignorechars=b' \t\n\r\v'):
     """Decode the Ascii85 encoded bytes-like object or ASCII string b.
 
     foldspaces is a flag that specifies whether the 'y' short sequence should be
@@ -139,11 +140,13 @@ def a85decode(b, *, foldspaces=False, adobe=False, ignorechars=b' \t\n\r\v'):
     decoded = []
     decoded_append = decoded.append
     curr = []
-    curr_append = curr.append
-    curr_clear = curr.clear
+    # curr_append = curr.append
+    # curr_clear = curr.clear
     for x in b + b'u' * 4:
         if b'!'[0] <= x <= b'u'[0]:
-            curr_append(x)
+            if type(x) is str:
+                x = ord(x)
+            curr.append(x)
             if len(curr) == 5:
                 acc = 0
                 for y in curr:
@@ -151,8 +154,10 @@ def a85decode(b, *, foldspaces=False, adobe=False, ignorechars=b' \t\n\r\v'):
                 try:
                     decoded_append(pack_i(acc))
                 except struct.error:
-                    raise ValueError('Ascii85 overflow') from None
-                curr_clear()
+                    raise ValueError('Ascii85 overflow')
+                # curr_clear()
+                del curr
+                curr = []
         elif x == b'z'[0]:
             if curr:
                 raise ValueError('z inside Ascii85 5-tuple')
