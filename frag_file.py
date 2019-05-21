@@ -10,10 +10,13 @@ import random
 import time
 import warnings
 
+import blowfish
 from frag_utils import a85decode, a85encode  # from base64 import a85decode, a85encode
 from frag_utils import hash_content, hash_file
 
 MAGIC_STRING = 'text/a85+fragment'  # follow mime type convention because why not
+INITIALIZATION_VECTOR = b'12345678'  # os.urandom(8)
+PASSWORD = b'password'
 
 
 def fragment_file(file_path, output_dir, max_size=22000000, size_range=4000000, hash_func='SHA1', verbose=False):
@@ -69,6 +72,10 @@ def fragment_file(file_path, output_dir, max_size=22000000, size_range=4000000, 
             hash_obj.update(fragment_raw)
             fragment_hash = hash_obj.hexdigest().upper()
 
+            # encrypt data
+            cipher = blowfish.Cipher(PASSWORD)
+            fragment_encrypted = b"".join(cipher.encrypt_cfb(fragment_raw, INITIALIZATION_VECTOR))
+
             if verbose:
                 print('fragment {} -> bytes {} through {}'.format(fragment_hash,
                                                                   fragment_start,
@@ -92,7 +99,7 @@ def fragment_file(file_path, output_dir, max_size=22000000, size_range=4000000, 
                     with io.open(fragment_path + '.tempfile', mode='wt', encoding='ascii', newline='\n') as f_out:
                         f_out.write(MAGIC_STRING + u'\n')
                         f_out.write(header + u'\n')
-                        f_out.write(a85encode(fragment_raw).decode('ascii') + u'\n')
+                        f_out.write(a85encode(fragment_encrypted).decode('ascii') + u'\n')
                     os.rename(fragment_path + '.tempfile', fragment_path)
                     break
                 except Exception as err:
@@ -164,15 +171,19 @@ class TextFragment:
             f.seek(self.content_pos)
             decoded_content = a85decode(f.readline().rstrip())
 
+            # decrypt data
+            cipher = blowfish.Cipher(PASSWORD)
+            decrypted_content = b"".join(cipher.decrypt_cfb(decoded_content, INITIALIZATION_VECTOR))
+
             # nothing left behind
             assert not f.read().strip()
 
             # verify content
-            assert self.fragment_size == len(decoded_content)
-            assert self.fragment_hash == hash_content(decoded_content, hash_func=self.hash_func)
+            assert self.fragment_size == len(decrypted_content)
+            assert self.fragment_hash == hash_content(decrypted_content, hash_func=self.hash_func)
 
             # return as many bytes as requested
-            return decoded_content[:length]
+            return decrypted_content[:length]
 
     def remove(self):
         """
