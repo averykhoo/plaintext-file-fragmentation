@@ -5,9 +5,9 @@
 
 ##  usage
 -   put files/dirs in input folder (`input`)
--   run encode
+-   run encode *(about 1 min per 100 MB)*
 -   transfer text files to other place (`ascii85_encoded`)
--   run decode
+-   run decode *(about 1.5 min per 100 MB)*
 -   take files out (`output_decoded`)
 
 ##  how it works

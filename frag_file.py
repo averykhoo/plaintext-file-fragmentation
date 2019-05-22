@@ -12,11 +12,10 @@ import time
 import warnings
 
 from frag_crypto import BlowfishCipher
-from frag_utils import a85decode, a85encode  # from base64 import a85decode, a85encode
+from frag_utils import a85decode, a85encode, password_to_bytes
 from frag_utils import hash_content, hash_file
 
-MAGIC_STRING = 'text/a85+fragment'  # follow mime type convention because why not
-SALT = 'salt'
+MAGIC_STRING = 'text/a85+fragment+blowfish'  # follow mime type convention because why not
 
 
 def fragment_file(file_path, output_dir, password='password', max_size=22000000, size_range=4000000, hash_func='SHA1',
@@ -74,9 +73,13 @@ def fragment_file(file_path, output_dir, password='password', max_size=22000000,
             fragment_hash = hash_obj.hexdigest().upper()
 
             # encrypt data
-            cipher = BlowfishCipher(bytes.fromhex(hash_content(SALT + password))[:32])
-            initialization_vector = os.urandom(8)
-            fragment_encrypted = b"".join(cipher.encrypt_cfb(fragment_raw, initialization_vector))
+            if password is not None:
+                cipher = BlowfishCipher(password_to_bytes(password))
+                initialization_vector = os.urandom(8)
+                fragment_encrypted = b"".join(cipher.encrypt_cfb(fragment_raw, initialization_vector))
+            else:
+                initialization_vector = b''
+                fragment_encrypted = fragment_raw
 
             if verbose:
                 print('fragment {} -> bytes {} through {}'.format(fragment_hash,
@@ -177,8 +180,11 @@ class TextFragment:
             decoded_content = a85decode(f.readline().rstrip())
 
             # decrypt data
-            cipher = BlowfishCipher(bytes.fromhex(hash_content(SALT + self.password))[:32])
-            decrypted_content = b"".join(cipher.decrypt_cfb(decoded_content, self.initialization_vector))
+            if self.password is not None and self.initialization_vector:
+                cipher = BlowfishCipher(password_to_bytes(self.password))
+                decrypted_content = b"".join(cipher.decrypt_cfb(decoded_content, self.initialization_vector))
+            else:
+                decrypted_content = decoded_content
 
             # nothing left behind
             assert not f.read().strip()

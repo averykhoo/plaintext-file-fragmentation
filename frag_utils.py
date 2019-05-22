@@ -2,6 +2,8 @@ import hashlib
 import os
 import struct
 
+BYTES_TYPES = (bytes, bytearray)  # Types acceptable as binary data
+
 
 def hash_file(file_path, hash_func='SHA1'):
     hash_func = hash_func.strip().lower()
@@ -22,7 +24,8 @@ def hash_content(content, hash_func='SHA1'):
     return hash_obj.hexdigest().upper()
 
 
-BYTES_TYPES = (bytes, bytearray)  # Types acceptable as binary data
+def password_to_bytes(password_string, salt='salt', max_len=56):
+    return bytes.fromhex(hash_content((salt + password_string).encode('utf8')))[:max_len]
 
 
 def _bytes_from_decode_data(s):
