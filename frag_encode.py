@@ -1,6 +1,7 @@
 import datetime
 import os
 import tarfile
+import time
 
 from frag_file import fragment_file
 
@@ -35,14 +36,20 @@ if __name__ == '__main__':
             print('<{}> already exists, will remove...'.format(archive_path))
             os.remove(archive_path)
 
+        t = time.time()
+
         # archive everything into a gzip file
         print('temporarily archiving <{}> to <{}>'.format(source_folder, archive_path))
         with tarfile.open(archive_path, mode='w:gz') as tf:
             tf.add(source_folder, arcname=archive_name)
 
+        print(f'elapsed: {time.time() - t} seconds')
+
         # plaintext fragmentation (size determined by defaults)
         print('fragmenting <{}> to <{}>'.format(archive_path, output_folder))
         fragment_paths = fragment_file(archive_path, output_folder, verbose=True)
+
+        print(f'elapsed: {time.time() - t} seconds')
 
         # remove gzip file, archive input folder
         print('deleting temp archive <{}>'.format(archive_path))
@@ -52,5 +59,7 @@ if __name__ == '__main__':
         os.makedirs(source_folder)
 
         print('created {} fragments'.format(len(fragment_paths)))
+
+        print(f'elapsed: {time.time() - t} seconds')
 
     print('done!')

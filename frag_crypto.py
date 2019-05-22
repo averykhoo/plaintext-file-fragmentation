@@ -28,8 +28,8 @@ Schneier and more details about it can be found at
 <https://www.schneier.com/blowfish.html>.
 """
 
-from struct import Struct, error as struct_error
 from itertools import cycle as iter_cycle
+from struct import Struct, error as struct_error
 
 __version__ = "0.7.1"
 
@@ -228,7 +228,7 @@ PI_S_BOXES = (
 )
 
 
-class Cipher(object):
+class BlowfishCipher(object):
     """
     Blowfish block cipher.
 

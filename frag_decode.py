@@ -1,5 +1,6 @@
 import os
 import tarfile
+import time
 
 from frag_file import restore_files
 
@@ -25,20 +26,25 @@ if __name__ == '__main__':
             os.makedirs(output_folder)
             print('output folder <{}> does not exist, creating...'.format(output_folder))
 
+        t = time.time()
+
         # decode each bunch of fragments separately
         for temp_archive_path in restore_files(source_folder, verbose=True):
 
             # did not decode
             if temp_archive_path is None:
                 continue
-
             # unzip
             print('restored to <{}>, unpacking archive...'.format(temp_archive_path))
             with tarfile.open(temp_archive_path, mode='r:gz') as tf:
                 tf.extractall(path=output_folder)
 
+            print(f'elapsed: {time.time() - t} seconds')
+
             # unpack and remove zip
             print('unpacked <{}>, deleting archive...'.format(temp_archive_path))
             os.remove(temp_archive_path)
+
+            print(f'elapsed: {time.time() - t} seconds')
 
     print('done!')

@@ -1,6 +1,7 @@
 """
 fragment a file into multiple smaller ascii files
 """
+import base64
 import glob
 import hashlib
 import io
@@ -10,13 +11,12 @@ import random
 import time
 import warnings
 
-import blowfish
+from frag_crypto import BlowfishCipher
 from frag_utils import a85decode, a85encode  # from base64 import a85decode, a85encode
 from frag_utils import hash_content, hash_file
 
 MAGIC_STRING = 'text/a85+fragment'  # follow mime type convention because why not
-INITIALIZATION_VECTOR = b'12345678'  # os.urandom(8)
-PASSWORD = b'password'
+PASSWORD = 'password must be a bytes object, length between 4 and 56'.encode('utf8')
 
 
 def fragment_file(file_path, output_dir, max_size=22000000, size_range=4000000, hash_func='SHA1', verbose=False):
@@ -73,8 +73,9 @@ def fragment_file(file_path, output_dir, max_size=22000000, size_range=4000000, 
             fragment_hash = hash_obj.hexdigest().upper()
 
             # encrypt data
-            cipher = blowfish.Cipher(PASSWORD)
-            fragment_encrypted = b"".join(cipher.encrypt_cfb(fragment_raw, INITIALIZATION_VECTOR))
+            cipher = BlowfishCipher(PASSWORD)
+            initialization_vector = os.urandom(8)
+            fragment_encrypted = b"".join(cipher.encrypt_cfb(fragment_raw, initialization_vector))
 
             if verbose:
                 print('fragment {} -> bytes {} through {}'.format(fragment_hash,
@@ -82,12 +83,13 @@ def fragment_file(file_path, output_dir, max_size=22000000, size_range=4000000, 
                                                                   fragment_start + fragment_size))
 
             # generate json header
-            header = json.dumps({'file_name':      file_name.decode('ascii'),
-                                 'file_hash':      file_hash,
-                                 'file_size':      file_size,
-                                 'fragment_start': fragment_start,
-                                 'fragment_hash':  fragment_hash,
-                                 'fragment_size':  fragment_size,
+            header = json.dumps({'file_name':             file_name.decode('ascii'),
+                                 'file_hash':             file_hash,
+                                 'file_size':             file_size,
+                                 'fragment_start':        fragment_start,
+                                 'fragment_hash':         fragment_hash,
+                                 'fragment_size':         fragment_size,
+                                 'initialization_vector': base64.b64encode(initialization_vector).decode('ascii'),
                                  }, separators=(',', ':'))
 
             # write fragment file
@@ -155,6 +157,7 @@ class TextFragment:
         self.fragment_start = header['fragment_start']
         self.fragment_hash = header['fragment_hash']
         self.fragment_size = header['fragment_size']
+        self.initialization_vector = base64.b64decode(header['initialization_vector'].encode('ascii'))
 
     def read(self, length=None):
         """
@@ -172,8 +175,8 @@ class TextFragment:
             decoded_content = a85decode(f.readline().rstrip())
 
             # decrypt data
-            cipher = blowfish.Cipher(PASSWORD)
-            decrypted_content = b"".join(cipher.decrypt_cfb(decoded_content, INITIALIZATION_VECTOR))
+            cipher = BlowfishCipher(PASSWORD)
+            decrypted_content = b"".join(cipher.decrypt_cfb(decoded_content, self.initialization_vector))
 
             # nothing left behind
             assert not f.read().strip()
