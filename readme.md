@@ -25,9 +25,6 @@
 
 ##  to-do
 -   setup logging, or provide receipts when zipping/unzipping?
--   make encryption less shitty
-    -   random IV, add to json header
-    -   salt password?
 
 ##  manual alternative
 1.  zip your file

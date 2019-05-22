@@ -16,10 +16,11 @@ from frag_utils import a85decode, a85encode  # from base64 import a85decode, a85
 from frag_utils import hash_content, hash_file
 
 MAGIC_STRING = 'text/a85+fragment'  # follow mime type convention because why not
-PASSWORD = 'password must be a bytes object, length between 4 and 56'.encode('utf8')
+SALT = 'salt'
 
 
-def fragment_file(file_path, output_dir, max_size=22000000, size_range=4000000, hash_func='SHA1', verbose=False):
+def fragment_file(file_path, output_dir, password='password', max_size=22000000, size_range=4000000, hash_func='SHA1',
+                  verbose=False):
     """
     see TextFragment for details
     """
@@ -73,7 +74,7 @@ def fragment_file(file_path, output_dir, max_size=22000000, size_range=4000000, 
             fragment_hash = hash_obj.hexdigest().upper()
 
             # encrypt data
-            cipher = BlowfishCipher(PASSWORD)
+            cipher = BlowfishCipher(bytes.fromhex(hash_content(SALT + password))[:32])
             initialization_vector = os.urandom(8)
             fragment_encrypted = b"".join(cipher.encrypt_cfb(fragment_raw, initialization_vector))
 
@@ -134,11 +135,12 @@ class TextFragment:
         fragment_size:  <fragment size> (int)
     """
 
-    def __init__(self, fragment_path, hash_func='SHA1'):
+    def __init__(self, fragment_path, password='password', hash_func='SHA1'):
         """
         :type fragment_path: str
         """
         self.fragment_path = fragment_path
+        self.password = password
         self.hash_func = hash_func.strip().lower()
 
         # sanity check
@@ -175,7 +177,7 @@ class TextFragment:
             decoded_content = a85decode(f.readline().rstrip())
 
             # decrypt data
-            cipher = BlowfishCipher(PASSWORD)
+            cipher = BlowfishCipher(bytes.fromhex(hash_content(SALT + self.password))[:32])
             decrypted_content = b"".join(cipher.decrypt_cfb(decoded_content, self.initialization_vector))
 
             # nothing left behind
