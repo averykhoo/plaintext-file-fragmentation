@@ -24,23 +24,24 @@ def hash_content(content, hash_func='SHA1'):
     return hash_obj.hexdigest().upper()
 
 
-def password_to_bytes(password_string, salt='salt', max_len=56):
-    return bytes.fromhex(hash_content((salt + password_string).encode('utf8')))[:max_len]
-
-
-def _bytes_from_decode_data(s):
-    # if isinstance(s, str):
+def _to_bytes(s, encoding='ascii'):
     if hasattr(s, 'encode'):
         try:
-            return s.encode('ascii')
+            return s.encode(encoding)
         except UnicodeEncodeError:
-            raise ValueError('string argument should contain only ASCII characters')
+            if encoding == 'ascii':
+                raise ValueError('string argument should contain only ASCII characters')
+            raise
     if isinstance(s, BYTES_TYPES):
         return s
     try:
         return memoryview(s).tobytes()
     except TypeError:
         raise TypeError('argument should be a bytes-like object or ASCII string, not {}'.format(s.__class__.__name__))
+
+
+def password_to_bytes(password_string, salt=b'salt', max_len=56):
+    return bytes.fromhex(hash_content(salt + _to_bytes(password_string, 'utf8')))[:max_len]
 
 
 _a85chars = [b'!', b'"', b'#', b'$', b'%', b'&', b"'", b'(', b')', b'*', b'+', b',', b'-', b'.', b'/', b'0', b'1',
@@ -130,7 +131,7 @@ def a85decode(b, foldspaces=False, adobe=False, ignorechars=b' \t\n\r\v'):
 
     The result is returned as a bytes object.
     """
-    b = _bytes_from_decode_data(b)
+    b = _to_bytes(b)
     if adobe:
         if not b.endswith(_A85END):
             raise ValueError('Ascii85 encoded byte sequences must end with {}'.format(repr(_A85END))
@@ -139,16 +140,13 @@ def a85decode(b, foldspaces=False, adobe=False, ignorechars=b' \t\n\r\v'):
             b = b[2:-2]  # Strip off start/end markers
         else:
             b = b[:-2]
-    #
-    # We have to go through this stepwise, so as to ignore spaces and handle
-    # special short sequences
-    #
+
+    # We have to go through this stepwise, so as to ignore spaces and handle special short sequences
     pack_i = struct.Struct('!I').pack
     decoded = []
     decoded_append = decoded.append
     curr = []
-    # curr_append = curr.append
-    # curr_clear = curr.clear
+
     for x in b + b'u' * 4:
         if b'!'[0] <= x <= b'u'[0]:
             if type(x) is str:

@@ -16,18 +16,18 @@ from frag_utils import a85decode, a85encode, password_to_bytes
 from frag_utils import hash_content, hash_file
 
 MAGIC_STRING = 'text/a85+fragment+blowfish'  # follow mime type convention because why not
+HASH_FUNCTION = 'sha1'
+
+assert HASH_FUNCTION in ['md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512']
 
 
-def fragment_file(file_path, output_dir, password='password', max_size=22000000, size_range=4000000, hash_func='SHA1',
-                  verbose=False):
+def fragment_file(file_path, output_dir, password='password', max_size=22000000, size_range=4000000, verbose=False):
     """
     see TextFragment for details
     """
     # sanity checks
     assert os.path.isfile(file_path), 'input file does not exist'
-    hash_func = hash_func.strip().lower()
-    assert hash_func in ['md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512']
-    assert size_range < max_size
+    assert 0 <= size_range < max_size
 
     # allocate fragment sizes randomly
     unallocated_bytes = os.path.getsize(file_path)
@@ -43,7 +43,7 @@ def fragment_file(file_path, output_dir, password='password', max_size=22000000,
 
     # get static values used in header info
     file_name = a85encode(os.path.basename(file_path).encode('utf8'))
-    file_hash = hash_file(file_path, hash_func=hash_func)
+    file_hash = hash_file(file_path, hash_func=HASH_FUNCTION)
     file_size = os.path.getsize(file_path)
     if verbose:
         print('fragmentation target path is <{}>'.format(file_path))
@@ -68,7 +68,7 @@ def fragment_file(file_path, output_dir, password='password', max_size=22000000,
             fragment_raw = f_in.read(fragment_size)
 
             # hash data
-            hash_obj = getattr(hashlib, hash_func)()
+            hash_obj = getattr(hashlib, HASH_FUNCTION)()
             hash_obj.update(fragment_raw)
             fragment_hash = hash_obj.hexdigest().upper()
 
@@ -108,7 +108,7 @@ def fragment_file(file_path, output_dir, password='password', max_size=22000000,
                         f_out.write(a85encode(fragment_encrypted).decode('ascii') + u'\n')
                     os.rename(fragment_path + '.tempfile', fragment_path)
                     break
-                except Exception as err:
+                except Exception:
                     if os.path.exists(fragment_path + '.tempfile'):
                         os.remove(fragment_path + '.tempfile')
                     raise
@@ -130,24 +130,21 @@ class TextFragment:
     3rd line is base64-encoded binary content
     
     json-header:
-        file_name:      <file name> (base64)
-        file_hash:      <file hash> (base64)
-        file_size:      <file size> (int)
-        fragment_start: <first byte of fragment data>
-        fragment_hash:  <fragment hash> (base64)
-        fragment_size:  <fragment size> (int)
+        file_name:              <file name> (base64)
+        file_hash:              <file hash> (base64)
+        file_size:              <file size> (int)
+        fragment_start:         <first byte of fragment data>
+        fragment_hash:          <fragment hash> (base64)
+        fragment_size:          <fragment size> (int)
+        initialization_vector:  <initialization vector> (base64)
     """
 
-    def __init__(self, fragment_path, password='password', hash_func='SHA1'):
+    def __init__(self, fragment_path, password='password'):
         """
         :type fragment_path: str
         """
         self.fragment_path = fragment_path
         self.password = password
-        self.hash_func = hash_func.strip().lower()
-
-        # sanity check
-        assert self.hash_func in ['md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512']
 
         # verify magic string and read header
         with io.open(fragment_path, mode='rt', encoding='ascii') as f:
@@ -191,7 +188,7 @@ class TextFragment:
 
             # verify content
             assert self.fragment_size == len(decrypted_content)
-            assert self.fragment_hash == hash_content(decrypted_content, hash_func=self.hash_func)
+            assert self.fragment_hash == hash_content(decrypted_content, hash_func=HASH_FUNCTION)
 
             # return as many bytes as requested
             return decrypted_content[:length]
@@ -218,14 +215,12 @@ class TextFragment:
 
 
 class FragmentedFile:
-    def __init__(self, text_fragment, hash_func='SHA1'):
+    def __init__(self, text_fragment):
         """
         :type text_fragment: TextFragment
         """
         # sanity check
         assert isinstance(text_fragment, TextFragment)
-        self.hash_func = hash_func.strip().lower()
-        assert self.hash_func in ['md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512']
 
         # get metadata
         self.file_name = text_fragment.file_name
@@ -303,14 +298,6 @@ class FragmentedFile:
                 text_fragment.remove()
 
     def make_file(self, output_dir, file_name=None, remove_originals=True, overwrite=False, verbose=False):
-        """
-
-        :param output_dir:
-        :param file_name:
-        :param remove_originals:
-        :param overwrite:
-        :return:
-        """
         # which fragment_set to make from
         extraction_plan = self.get_extraction_plan()
         assert extraction_plan is not None
@@ -336,7 +323,7 @@ class FragmentedFile:
 
         # check if already extracted to avoid overwrite
         if os.path.exists(file_path):
-            if hash_file(file_path, hash_func=self.hash_func) == self.file_hash:
+            if hash_file(file_path, hash_func=HASH_FUNCTION) == self.file_hash:
                 if verbose:
                     print('file already successfully extracted and exists at output path')
                 if remove_originals:
@@ -354,14 +341,16 @@ class FragmentedFile:
         try:
             with io.open(temp_path, 'wb') as f:
                 # init full content hash
-                hash_obj = getattr(hashlib, self.hash_func)()
+                hash_obj = getattr(hashlib, HASH_FUNCTION)()
 
                 # write all fragments in order and update full content hash
                 for required_length, text_fragment in extraction_plan:
                     if verbose:
-                        print('restoring from {} -> bytes {} through {}'.format(text_fragment.fragment_hash,
-                                                                                text_fragment.fragment_start + 1,
-                                                                                text_fragment.fragment_start + text_fragment.fragment_size))
+                        print('restoring from {} -> bytes {} through {}'
+                              .format(text_fragment.fragment_hash,
+                                      text_fragment.fragment_start + 1,
+                                      text_fragment.fragment_start + text_fragment.fragment_size))
+
                     assert f.tell() == text_fragment.fragment_start
                     content = text_fragment.read(required_length)
                     hash_obj.update(content)
@@ -373,9 +362,10 @@ class FragmentedFile:
             os.rename(temp_path, file_path)
 
         # if something failed, delete partial file
-        except:
+        except Exception:
             if os.path.exists(temp_path):
                 os.remove(temp_path)
+            raise
 
         # erase originals (unless otherwise specified) and return
         if remove_originals:
