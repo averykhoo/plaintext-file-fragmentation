@@ -47,7 +47,7 @@ if __name__ == '__main__':
 
         # plaintext fragmentation (size determined by defaults)
         print('fragmenting <{}> to <{}>'.format(archive_path, output_folder))
-        fragment_paths = fragment_file(archive_path, output_folder, verbose=True)
+        fragment_paths = fragment_file(archive_path, output_folder, password='password', verbose=True)
 
         print(f'elapsed: {time.time() - t} seconds')
 

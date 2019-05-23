@@ -29,7 +29,7 @@ if __name__ == '__main__':
         t = time.time()
 
         # decode each bunch of fragments separately
-        for temp_archive_path in restore_files(source_folder, verbose=True):
+        for temp_archive_path in restore_files(source_folder, password='password', verbose=True):
 
             # did not decode
             if temp_archive_path is None:

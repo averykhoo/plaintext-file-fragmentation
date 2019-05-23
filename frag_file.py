@@ -21,7 +21,7 @@ HASH_FUNCTION = 'sha1'
 assert HASH_FUNCTION in ['md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512']
 
 
-def fragment_file(file_path, output_dir, password='password', max_size=22000000, size_range=4000000, verbose=False):
+def fragment_file(file_path, output_dir, password=None, max_size=22000000, size_range=4000000, verbose=False):
     """
     see TextFragment for details
     """
@@ -139,7 +139,7 @@ class TextFragment:
         initialization_vector:  <initialization vector> (base64)
     """
 
-    def __init__(self, fragment_path, password='password'):
+    def __init__(self, fragment_path, password=None):
         """
         :type fragment_path: str
         """
@@ -373,11 +373,11 @@ class FragmentedFile:
         return file_path
 
 
-def restore_files(input_dir, file_name=None, remove_originals=True, overwrite=False, verbose=False):
+def restore_files(input_dir, password=None, file_name=None, remove_originals=True, overwrite=False, verbose=False):
     fragmented_files = dict()
 
     for path in glob.glob(os.path.join(input_dir, '*.txt')):
-        text_fragment = TextFragment(path)
+        text_fragment = TextFragment(path, password=password)
         fragmented_files.setdefault(text_fragment.file_hash, FragmentedFile(text_fragment)).add(text_fragment)
 
     for file_hash, file_fragments in fragmented_files.items():
