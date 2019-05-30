@@ -10,7 +10,7 @@ import random
 import time
 import warnings
 
-from frag_rc4 import RC4A
+from frag_rc4 import RC4
 from frag_utils import a85decode, a85encode, password_to_bytes
 from frag_utils import hash_content, hash_file
 
@@ -74,7 +74,7 @@ def fragment_file(file_path, output_dir, password=None, max_size=22000000, size_
 
             # encrypt data
             if password is not None:
-                cipher = RC4A(password_to_bytes(password), RC4_DROP)
+                cipher = RC4(password_to_bytes(password), RC4_DROP)
                 fragment_encrypted = cipher.encode_decode(fragment_raw)
             else:
                 fragment_encrypted = fragment_raw
@@ -173,7 +173,7 @@ class TextFragment:
 
             # decrypt data
             if self.password is not None:
-                cipher = RC4A(password_to_bytes(self.password), RC4_DROP)
+                cipher = RC4(password_to_bytes(self.password), RC4_DROP)
                 decrypted_content = cipher.encode_decode(decoded_content)
             else:
                 decrypted_content = decoded_content

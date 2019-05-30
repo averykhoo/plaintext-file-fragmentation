@@ -1,5 +1,5 @@
 class RC4(object):
-    def __init__(self, key):
+    def __init__(self, key, skip=None):
         self.i = 0
         self.j = 0
         self.S = self.KSA(key)
