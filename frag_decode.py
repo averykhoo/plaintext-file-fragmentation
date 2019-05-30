@@ -39,12 +39,12 @@ if __name__ == '__main__':
             with tarfile.open(temp_archive_path, mode='r:gz') as tf:
                 tf.extractall(path=output_folder)
 
-            print(f'elapsed: {time.time() - t} seconds')
+            print('elapsed: {} seconds'.format(time.time() - t))
 
             # unpack and remove zip
             print('unpacked <{}>, deleting archive...'.format(temp_archive_path))
             os.remove(temp_archive_path)
 
-            print(f'elapsed: {time.time() - t} seconds')
+            print('elapsed: {} seconds'.format(time.time() - t))
 
     print('done!')

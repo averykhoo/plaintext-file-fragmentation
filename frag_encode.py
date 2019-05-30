@@ -43,13 +43,13 @@ if __name__ == '__main__':
         with tarfile.open(archive_path, mode='w:gz') as tf:
             tf.add(source_folder, arcname=archive_name)
 
-        print(f'elapsed: {time.time() - t} seconds')
+        print('elapsed: {} seconds'.format(time.time() - t))
 
         # plaintext fragmentation (size determined by defaults)
         print('fragmenting <{}> to <{}>'.format(archive_path, output_folder))
         fragment_paths = fragment_file(archive_path, output_folder, password='password', verbose=True)
 
-        print(f'elapsed: {time.time() - t} seconds')
+        print('elapsed: {} seconds'.format(time.time() - t))
 
         # remove gzip file, archive input folder
         print('deleting temp archive <{}>'.format(archive_path))
@@ -60,6 +60,6 @@ if __name__ == '__main__':
 
         print('created {} fragments'.format(len(fragment_paths)))
 
-        print(f'elapsed: {time.time() - t} seconds')
+        print('elapsed: {} seconds'.format(time.time() - t))
 
     print('done!')
