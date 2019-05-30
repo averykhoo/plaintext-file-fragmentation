@@ -3,43 +3,77 @@ import codecs
 
 class RC4(object):
     def __init__(self, key):
-        self.S = self.newSBox(key)
+        self.S = self.KSA(key)
 
         self.i = 0
         self.j = 0
 
-    def newSBox(self, key):
-        if isinstance(key, str):
-            key = key.encode('utf8')
-            # key = [ord(char) for char in key]
+    def KSA(self, key):
+        """
+        Key Scheduling Algorithm (from wikipedia):
 
+        for i from 0 to 255
+            S[i] := i
+        endfor
+        j := 0
+        for i from 0 to 255
+            j := (j + S[i] + key[i mod keylength]) mod 256
+            swap values of S[i] and S[j]
+        endfor
+
+        :param key:
+        :return: new S box
+        """
+        if isinstance(key, str):
+            # key = key.encode('utf8')
+            key = [ord(char) for char in key]
+
+        key_length = len(key)
         S = list(range(256))
 
         j = 0
         for i in range(256):
-            j = (j + S[i] + key[i % len(key)]) % 256
+            j = (j + S[i] + key[i % key_length]) % 256
             S[i], S[j] = S[j], S[i]
 
         return S
 
-    def generate_key_stream(self, size):
+    def PRGA(self, size):
+        """
+        Psudo Random Generation Algorithm (from wikipedia):
+        i := 0
+        j := 0
+        while GeneratingOutput:
+            i := (i + 1) mod 256
+            j := (j + S[i]) mod 256
+            swap values of S[i] and S[j]
+            K := S[(S[i] + S[j]) mod 256]
+            output K
+        endwhile
+
+        :param size:
+        :return:
+        """
         i = self.i
         j = self.j
-        stream = []
+        S = self.S
+        key_stream = []
 
-        while len(stream) < size:
+        while len(key_stream) < size:
             i = (i + 1) % 256
-            j = (j + self.S[i]) % 256
-            self.S[i], self.S[j] = self.S[j], self.S[i]
-            stream.append(self.S[(self.S[i] + self.S[j]) % 256])
+            j = (j + S[i]) % 256
+
+            S[i], S[j] = S[j], S[i]
+            K = S[(S[i] + S[j]) % 256]
+            key_stream.append(K)
 
         self.i = i
         self.j = j
 
-        return stream
+        return key_stream
 
     def encode_bytes(self, input_bytes):
-        stream = self.generate_key_stream(len(input_bytes))
+        stream = self.PRGA(len(input_bytes))
         return [input_bytes[i] ^ stream[i] for i in range(len(input_bytes))]
 
     def decode_bytes(self, input_bytes):
@@ -55,10 +89,10 @@ class RC4(object):
 class RC4A(RC4):
     def __init__(self, key):
         super().__init__(key)
-        self.S2 = self.newSBox(key)
+        self.S2 = self.KSA(key)
         self.j2 = 0
 
-    def generate_key_stream(self, size):
+    def PRGA(self, size):
         i = self.i
         j1 = self.j
         j2 = self.j2
@@ -91,7 +125,7 @@ class VMPC(RC4):
     def __init__(self, key):
         super().__init__(key)
 
-    def generate_key_stream(self, size):
+    def PRGA(self, size):
         stream = []
 
         i = self.i
@@ -111,16 +145,17 @@ class VMPC(RC4):
 
         self.i = i
         self.j = j
-        self.S = S
+        # self.S = S
 
         return stream
 
 
 class RCPlus(RC4):
-    def generate_key_stream(self, size):
+    def PRGA(self, size):
         i = self.i
-        S = self.S
         j = self.j
+        S = self.S
+
         stream = []
         while len(stream) < size:
             i = (i + 1) % 256
@@ -138,8 +173,8 @@ class RCPlus(RC4):
             stream.append((S[ab] + S[c ^ 0xAA]) ^ S[jb])
 
         self.i = i
-        self.S = S
         self.j = j
+        # self.S = S
 
         return stream
 
@@ -166,15 +201,15 @@ class RCDrop(RC4):
 
     def __init__(self, key, skip=768):
         super().__init__(key)
-        self.generate_key_stream(skip)
+        self.PRGA(skip)
 
 
 def main():
-    RC4('key').generate_key_stream(4096)
-    RC4A('key').generate_key_stream(4096)
-    VMPC('key').generate_key_stream(4096)
-    RCDrop('key', 4096).generate_key_stream(4096)
-    RCPlus('key').generate_key_stream(4096)
+    RC4('key').PRGA(4096)
+    RC4A('key').PRGA(4096)
+    VMPC('key').PRGA(4096)
+    RCDrop('key', 4096).PRGA(4096)
+    RCPlus('key').PRGA(4096)
 
     print(RC4('key').encode_str('test'))
     print(RC4('key').decode_str(RC4('key').encode_str('test')))
