@@ -32,7 +32,7 @@ class RC4(object):
 
         j = 0
         for i in range(256):
-            j = (j + S[i] + key[i % key_length]) % 256
+            j = (j + S[i] + key[i % key_length]) & 0xFF
             S[i], S[j] = S[j], S[i]
 
         return S
@@ -57,10 +57,10 @@ class RC4(object):
 
         # while GeneratingOutput:
         for _ in range(size):
-            self.i = (self.i + 1) % 256
-            self.j = (self.j + self.S[self.i]) % 256
+            self.i = (self.i + 1) & 0xFF
+            self.j = (self.j + self.S[self.i]) & 0xFF
             self.S[self.i], self.S[self.j] = self.S[self.j], self.S[self.i]
-            K = self.S[(self.S[self.i] + self.S[self.j]) % 256]
+            K = self.S[(self.S[self.i] + self.S[self.j]) & 0xFF]
             key_stream.append(K)
 
         return key_stream
@@ -99,19 +99,21 @@ class RC4A(RC4):
 
         for _ in range(size):
             if self.first_op:
-                self.i = (self.i + 1) % 256
-                self.j = (self.j + self.S[self.i]) % 256
-                self.S[self.i], self.S[self.j] = self.S[self.j], self.S[self.i]
-                K = self.S2[(self.S[self.i] + self.S[self.j]) % 256]
-                key_stream.append(K)
                 self.first_op = False
 
-            else:
-                self.j2 = (self.j2 + self.S2[self.i]) % 256
-                self.S2[self.i], self.S2[self.j2] = self.S2[self.j2], self.S2[self.i]
-                K = self.S[(self.S2[self.i] + self.S2[self.j2]) % 256]
+                self.i = (self.i + 1) & 0xFF
+                self.j = (self.j + self.S[self.i]) & 0xFF
+                self.S[self.i], self.S[self.j] = self.S[self.j], self.S[self.i]
+                K = self.S2[(self.S[self.i] + self.S[self.j]) & 0xFF]
                 key_stream.append(K)
+
+            else:
                 self.first_op = True
+
+                self.j2 = (self.j2 + self.S2[self.i]) & 0xFF
+                self.S2[self.i], self.S2[self.j2] = self.S2[self.j2], self.S2[self.i]
+                K = self.S[(self.S2[self.i] + self.S2[self.j2]) & 0xFF]
+                key_stream.append(K)
 
         return key_stream
 
@@ -125,14 +127,15 @@ class VMPC(RC4):
 
         for _ in range(size):
             a = self.S[self.i]
-            self.j = self.S[(self.j + a) % 256]
+            self.j = self.S[(self.j + a) & 0xFF]
             b = self.S[self.j]
 
-            key_stream.append(self.S[(self.S[b] + 1) % 256])
+            K = self.S[(self.S[b] + 1) & 0xFF]
+            key_stream.append(K)
 
             self.S[self.i] = b
             self.S[self.j] = a
-            self.i = (self.i + 1) % 256
+            self.i = (self.i + 1) & 0xFF
 
         return key_stream
 
@@ -142,20 +145,20 @@ class RCPlus(RC4):
         key_stream = []
 
         for _ in range(size):
-            self.i = (self.i + 1) % 256
+            self.i = (self.i + 1) & 0xFF
             a = self.S[self.i]
 
-            self.j = (self.j + a) % 256
+            self.j = (self.j + a) & 0xFF
             b = self.S[self.j]
 
             self.S[self.i] = b
             self.S[self.j] = a
 
-            v = (self.i << 5 ^ self.j >> 3) % 256
-            w = (self.j << 5 ^ self.i >> 3) % 256
+            v = (self.i << 5 ^ self.j >> 3) & 0xFF
+            w = (self.j << 5 ^ self.i >> 3) & 0xFF
 
-            c = (self.S[v] + self.S[self.j] + self.S[w]) % 256
-            K = (self.S[(a + b) % 256] + self.S[c ^ 0xAA]) ^ self.S[(self.j + b) % 256]
+            c = (self.S[v] + self.S[self.j] + self.S[w]) & 0xFF
+            K = (self.S[(a + b) % 256] + self.S[c ^ 0xAA]) & 0xFF ^ self.S[(self.j + b) & 0xFF]
 
             key_stream.append(K)
 
@@ -247,3 +250,15 @@ def test():
 if __name__ == '__main__':
     test()
     main()
+
+    # C:\Users\IA-Intern\Anaconda3\python.exe C:/Users/IA-Intern/Desktop/plaintext_file_fragmentation/rc4_4.py
+    # [127, 9, 71, 153]
+    # test
+    # [127, 110, 31, 24]
+    # test
+    # [19, 95, 153, 146]
+    # test
+    # [101, 75, 195, 218]
+    # test
+    # [39, 207, 480, 391]
+    # test
