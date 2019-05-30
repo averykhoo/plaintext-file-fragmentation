@@ -145,7 +145,26 @@ class RCPlus(RC4):
 
 
 class RCDrop(RC4):
-    def __init__(self, key, skip):
+    """
+    The paper by Ilya Mironov says:
+
+     - Our most conservative recommendation is based on the experimental data on the tail probability of the strong
+       uniform time T (Section 5.5).
+
+     - This means that discarding the initial 12 × 256 bytes most likely eliminates the possibility of a strong attack.
+
+     - Dumping several times more than 256 bytes from the output stream (twice or three times this number) appears
+       to be just as reasonable a precaution.
+
+     - We recommend doing so in most applications.
+
+    I.e. the "most conservative" recommendation is to use RC4-drop(3072),
+         but RC4-drop(768) "appears to be just as reasonable".
+
+    The latter is the default for this algorithm.
+    """
+
+    def __init__(self, key, skip=768):
         super().__init__(key)
         self.generate_key_stream(skip)
 
