@@ -3,10 +3,9 @@ import codecs
 
 class RC4(object):
     def __init__(self, key):
-        self.S = self.KSA(key)
-
         self.i = 0
         self.j = 0
+        self.S = self.KSA(key)
 
     def KSA(self, key):
         """
@@ -54,21 +53,15 @@ class RC4(object):
         :param size:
         :return:
         """
-        i = self.i
-        j = self.j
-        S = self.S
         key_stream = []
 
-        while len(key_stream) < size:
-            i = (i + 1) % 256
-            j = (j + S[i]) % 256
-
-            S[i], S[j] = S[j], S[i]
-            K = S[(S[i] + S[j]) % 256]
+        # while GeneratingOutput:
+        for _ in range(size):
+            self.i = (self.i + 1) % 256
+            self.j = (self.j + self.S[self.i]) % 256
+            self.S[self.i], self.S[self.j] = self.S[self.j], self.S[self.i]
+            K = self.S[(self.S[self.i] + self.S[self.j]) % 256]
             key_stream.append(K)
-
-        self.i = i
-        self.j = j
 
         return key_stream
 
@@ -83,7 +76,7 @@ class RC4(object):
         return self.encode_bytes([ord(c) for c in input_str])
 
     def decode_str(self, input_str):
-        return "".join([chr(c) for c in self.decode_bytes(input_str)])
+        return ''.join([chr(c) for c in self.decode_bytes(input_str)])
 
 
 class RC4A(RC4):
@@ -92,33 +85,29 @@ class RC4A(RC4):
         self.S2 = self.KSA(key)
         self.j2 = 0
 
+        # to toggle the PRGA between S boxes
+        self.first_op = True
+
     def PRGA(self, size):
-        i = self.i
-        j1 = self.j
-        j2 = self.j2
-        S1 = self.S
-        S2 = self.S2
+        key_stream = []
 
-        stream = []
+        for _ in range(size):
+            if self.first_op:
+                self.i = (self.i + 1) % 256
+                self.j = (self.j + self.S[self.i]) % 256
+                self.S[self.i], self.S[self.j] = self.S[self.j], self.S[self.i]
+                K = self.S2[(self.S[self.i] + self.S[self.j]) % 256]
+                key_stream.append(K)
+                self.first_op = False
 
-        while len(stream) < size:
-            i = (i + 1) % 256
+            else:
+                self.j2 = (self.j2 + self.S2[self.i]) % 256
+                self.S2[self.i], self.S2[self.j2] = self.S2[self.j2], self.S2[self.i]
+                K = self.S[(self.S2[self.i] + self.S2[self.j2]) % 256]
+                key_stream.append(K)
+                self.first_op = True
 
-            j1 = (j1 + S1[i]) % 256
-            S1[i], S1[j1] = S1[j1], S1[i]
-            pos1 = S1[i] + S1[j1]
-            stream.append(S2[pos1 % 256])
-
-            j2 = (j2 + S2[i]) % 256
-            S2[i], S2[j2] = S2[j2], S2[i]
-            pos2 = S2[i] + S2[j2]
-            stream.append(S1[pos2 % 256])
-
-        self.i = i
-        self.j = j1
-        self.j2 = j2
-
-        return stream
+        return key_stream
 
 
 class VMPC(RC4):
@@ -126,57 +115,45 @@ class VMPC(RC4):
         super().__init__(key)
 
     def PRGA(self, size):
-        stream = []
+        key_stream = []
 
-        i = self.i
-        j = self.j
-        S = self.S
+        for _ in range(size):
+            a = self.S[self.i]
+            self.j = self.S[(self.j + a) % 256]
+            b = self.S[self.j]
 
-        while len(stream) < size:
-            a = S[i]
-            j = S[(j + a) % 256]
-            b = S[j]
+            key_stream.append(self.S[(self.S[b] + 1) % 256])
 
-            stream.append(S[(S[b] + 1) % 256])
+            self.S[self.i] = b
+            self.S[self.j] = a
+            self.i = (self.i + 1) % 256
 
-            S[i] = b
-            S[j] = a
-            i = (i + 1) % 256
-
-        self.i = i
-        self.j = j
-        # self.S = S
-
-        return stream
+        return key_stream
 
 
 class RCPlus(RC4):
     def PRGA(self, size):
-        i = self.i
-        j = self.j
-        S = self.S
+        key_stream = []
 
-        stream = []
-        while len(stream) < size:
-            i = (i + 1) % 256
-            a = S[i]
-            j = (j + a) % 256
-            b = S[j]
-            S[i] = b
-            S[j] = a
-            v = (i << 5 ^ j >> 3) % 256
-            w = (j << 5 ^ i >> 3) % 256
+        for _ in range(size):
+            self.i = (self.i + 1) % 256
+            a = self.S[self.i]
 
-            c = (S[v] + S[j] + S[w]) % 256
-            ab = (a + b) % 256
-            jb = (j + b) % 256
-            stream.append((S[ab] + S[c ^ 0xAA]) ^ S[jb])
+            self.j = (self.j + a) % 256
+            b = self.S[self.j]
 
-        self.i = i
-        self.j = j
-        # self.S = S
+            self.S[self.i] = b
+            self.S[self.j] = a
 
-        return stream
+            v = (self.i << 5 ^ self.j >> 3) % 256
+            w = (self.j << 5 ^ self.i >> 3) % 256
+
+            c = (self.S[v] + self.S[self.j] + self.S[w]) % 256
+            K = (self.S[(a + b) % 256] + self.S[c ^ 0xAA]) ^ self.S[(self.j + b) % 256]
+
+            key_stream.append(K)
+
+        return key_stream
 
 
 class RCDrop(RC4):
