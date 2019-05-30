@@ -57,16 +57,16 @@ if __name__ == '__main__':
     # test vectors are from http://en.wikipedia.org/wiki/RC4
 
     # ciphertext should be BBF316E8D940AF0AD3
-    key = 'Key'
-    plaintext = 'Plaintext'
+    # key = 'Key'
+    # plaintext = 'Plaintext'
 
     # ciphertext should be 1021BF0420
-    #key = 'Wiki'
-    #plaintext = 'pedia'
+    # key = 'Wiki'
+    # plaintext = 'pedia'
 
     # ciphertext should be 45A01F645FC35B383552544B9BF5
-    #key = 'Secret'
-    #plaintext = 'Attack at dawn'
+    key = 'Secret'
+    plaintext = 'Attack at dawn'
 
     def convert_key(s):
         return [ord(c) for c in s]
@@ -76,6 +76,7 @@ if __name__ == '__main__':
 
     encrypted = bytes(b ^ next(keystream) for b in plaintext.encode('utf8'))
     print(repr(encrypted))
+    print(''.join(f'{b:02X}' for b in encrypted))
 
     keystream = RC4(key)
     decrypted = bytes(b ^ next(keystream) for b in encrypted).decode('utf8')

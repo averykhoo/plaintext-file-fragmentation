@@ -59,19 +59,22 @@ def PRGA(S):
 
 
 def get_keystream(key):
-    '''
-    Takes the encryption key to get the keystream using PRGA
-    return object is a generator
-    '''
+    """
+
+    :param key: encryption key to get the keystream using PRGA
+    :return: generator
+    """
     S = KSA(key)
     return PRGA(S)
 
 
 def encrypt_logic(key, text):
-    '''
-    :key -> encryption key used for encrypting, as hex string
-    :text -> array of unicode values/ byte string to encrpyt/decrypt
-    '''
+    """
+
+    :param key: encryption key used for encrypting, as hex string
+    :param text: array of unicode values/ byte string to encrypt/decrypt
+    :return:
+    """
     # For plaintext key, use this
     key = [ord(c) for c in key]
     # If key is in hex:
@@ -87,19 +90,23 @@ def encrypt_logic(key, text):
 
 
 def encrypt(key, plaintext):
-    '''
-     :key -> encryption key used for encrypting, as hex string
-    :plaintext -> plaintext string to encrpyt
-    '''
+    """
+
+    :param key: encryption key used for encrypting, as hex string
+    :param plaintext: plaintext string to encrypt
+    :return:
+    """
     plaintext = [ord(c) for c in plaintext]
     return encrypt_logic(key, plaintext)
 
 
 def decrypt(key, ciphertext):
-    '''
-     :key -> encryption key used for encrypting, as hex string
-    :ciphertext -> hex encoded ciphered text using RC4
-    '''
+    """
+
+    :param key: encryption key used for encrypting, as hex string
+    :param ciphertext: hex encoded ciphered text using RC4
+    :return:
+    """
     ciphertext = codecs.decode(ciphertext, 'hex_codec')
     res = encrypt_logic(key, ciphertext)
     return codecs.decode(res, 'hex_codec').decode('utf-8')
