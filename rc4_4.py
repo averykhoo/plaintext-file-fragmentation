@@ -9,11 +9,15 @@ class RC4(object):
         self.j = 0
 
     def newSBox(self, key):
+        if isinstance(key, str):
+            key = key.encode('utf8')
+            # key = [ord(char) for char in key]
+
         S = list(range(256))
 
         j = 0
         for i in range(256):
-            j = (j + S[i] + ord(key[i % len(key)])) % 256
+            j = (j + S[i] + key[i % len(key)]) % 256
             S[i], S[j] = S[j], S[i]
 
         return S
