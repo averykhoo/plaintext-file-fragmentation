@@ -74,7 +74,7 @@ class RC4(object):
 
 class RC4A(RC4):
     def __init__(self, key, skip=0):
-        super().__init__(key)
+        super(RC4A, self).__init__(key)
         self.S2 = self.KSA(key)
         self.j2 = 0
 
@@ -110,7 +110,7 @@ class RC4A(RC4):
 
 class VMPC(RC4):
     def __init__(self, key, skip=0):
-        super().__init__(key)
+        super(VMPC, self).__init__(key)
 
         if skip > 0:
             self.PRGA(skip)
@@ -135,7 +135,7 @@ class VMPC(RC4):
 
 class RCPlus(RC4):
     def __init__(self, key, skip=0):
-        super().__init__(key)
+        super(RCPlus, self).__init__(key)
 
         if skip > 0:
             self.PRGA(skip)
@@ -171,7 +171,7 @@ class RCDrop(RC4):
      - Our most conservative recommendation is based on the experimental data on the tail probability of the strong
        uniform time T (Section 5.5).
 
-     - This means that discarding the initial 12 × 256 bytes most likely eliminates the possibility of a strong attack.
+     - This means that discarding the initial 12 * 256 bytes most likely eliminates the possibility of a strong attack.
 
      - Dumping several times more than 256 bytes from the output stream (twice or three times this number) appears
        to be just as reasonable a precaution.
@@ -185,7 +185,7 @@ class RCDrop(RC4):
     """
 
     def __init__(self, key, skip=768):
-        super().__init__(key)
+        super(RCDrop, self).__init__(key)
 
         if skip > 0:
             self.PRGA(skip)
