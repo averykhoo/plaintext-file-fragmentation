@@ -69,20 +69,11 @@ class RC4(object):
         key_stream = self.PRGA(len(content_bytes))
         return bytes([content_bytes[i] ^ key_stream[i] for i in range(len(content_bytes))])
 
-    def encode_bytes(self, input_bytes):
-        # return list(self.encode_decode(input_bytes))
-        stream = self.PRGA(len(input_bytes))
-        return [input_bytes[i] ^ stream[i] for i in range(len(input_bytes))]
-
-    def decode_bytes(self, input_bytes):
-        # return list(self.encode_decode(input_bytes))
-        return self.encode_bytes(input_bytes)
-
     def encode_str(self, input_str):
-        return self.encode_bytes(bytes([ord(c) for c in input_str]))
+        return list(self.encode_decode(input_str.encode('utf8')))
 
-    def decode_str(self, input_str):
-        return ''.join([chr(c) for c in self.decode_bytes(input_str)])
+    def decode_str(self, input_bytes):
+        return self.encode_decode(input_bytes).decode('utf8')
 
 
 class RC4A(RC4):
