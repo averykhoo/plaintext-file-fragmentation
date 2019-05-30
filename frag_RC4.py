@@ -73,13 +73,16 @@ class RC4(object):
 
 
 class RC4A(RC4):
-    def __init__(self, key):
+    def __init__(self, key, skip=0):
         super().__init__(key)
         self.S2 = self.KSA(key)
         self.j2 = 0
 
         # to toggle the PRGA between S boxes
         self.first_op = True
+
+        if skip > 0:
+            self.PRGA(skip)
 
     def PRGA(self, size):
         key_stream = []
@@ -106,8 +109,11 @@ class RC4A(RC4):
 
 
 class VMPC(RC4):
-    def __init__(self, key):
+    def __init__(self, key, skip=0):
         super().__init__(key)
+
+        if skip > 0:
+            self.PRGA(skip)
 
     def PRGA(self, size):
         key_stream = []
@@ -128,6 +134,12 @@ class VMPC(RC4):
 
 
 class RCPlus(RC4):
+    def __init__(self, key, skip=0):
+        super().__init__(key)
+
+        if skip > 0:
+            self.PRGA(skip)
+
     def PRGA(self, size):
         key_stream = []
 
@@ -174,7 +186,9 @@ class RCDrop(RC4):
 
     def __init__(self, key, skip=768):
         super().__init__(key)
-        self.PRGA(skip)
+
+        if skip > 0:
+            self.PRGA(skip)
 
 
 def test():
