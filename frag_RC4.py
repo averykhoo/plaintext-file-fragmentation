@@ -243,6 +243,9 @@ if __name__ == '__main__':
     # [127, 110, 31, 24]
     # test
 
+    print('RC4A-drop', RC4A('key', 1234).encode_str('test'))
+    print(RC4A('key', 1234).decode_str(RC4A('key', 1234).encode_str('test')))
+
     print('VMPC', VMPC('key').encode_str('test'))
     print(VMPC('key').decode_str(VMPC('key').encode_str('test')))
     # [19, 95, 153, 146]
