@@ -1,6 +1,3 @@
-import codecs
-
-
 class RC4(object):
     def __init__(self, key):
         self.i = 0
@@ -24,8 +21,7 @@ class RC4(object):
         :return: new S box
         """
         if isinstance(key, str):
-            # key = key.encode('utf8')
-            key = [ord(char) for char in key]
+            key = [ord(char) for char in key]  # key.encode('utf8')
 
         key_length = len(key)
         S = list(range(256))
@@ -181,38 +177,22 @@ class RCDrop(RC4):
         self.PRGA(skip)
 
 
-def main():
+def test():
+    # does it crash
     RC4('key').PRGA(4096)
     RC4A('key').PRGA(4096)
     VMPC('key').PRGA(4096)
     RCDrop('key', 4096).PRGA(4096)
     RCPlus('key').PRGA(4096)
 
-    print(RC4('key').encode_str('test'))
-    print(RC4('key').decode_str(RC4('key').encode_str('test')))
+    import codecs
 
-    print(RC4A('key').encode_str('test'))
-    print(RC4A('key').decode_str(RC4A('key').encode_str('test')))
+    def encrypt(key, plaintext):
+        return codecs.encode(bytes(RC4(key).encode_str(plaintext)), 'hex_codec').decode('ascii').upper()
 
-    print(VMPC('key').encode_str('test'))
-    print(VMPC('key').decode_str(VMPC('key').encode_str('test')))
+    def decrypt(key, plaintext):
+        return RC4(key).decode_str(codecs.decode(plaintext, 'hex_codec'))
 
-    print(RCDrop('key', 4096).encode_str('test'))
-    print(RCDrop('key', 4096).decode_str(RCDrop('key', 4096).encode_str('test')))
-
-    print(RCPlus('key').encode_str('test'))
-    print(RCPlus('key').decode_str(RCPlus('key').encode_str('test')))
-
-
-def encrypt(key, plaintext):
-    return codecs.encode(bytes(RC4(key).encode_str(plaintext)), 'hex_codec').decode('ascii').upper()
-
-
-def decrypt(key, plaintext):
-    return RC4(key).decode_str(codecs.decode(plaintext, 'hex_codec'))
-
-
-def test():
     # Test case 1
     # key = '4B6579' # 'Key' in hex
     # key = 'Key'
@@ -232,24 +212,34 @@ def test():
     # key = 'Secret' # '536563726574' in hex
     # plaintext = 'Attack at dawn'
     # ciphertext should be 45A01F645FC35B383552544B9BF5
-    assert (encrypt('Secret',
-                    'Attack at dawn')) == '45A01F645FC35B383552544B9BF5'
-    assert (decrypt('Secret',
-                    '45A01F645FC35B383552544B9BF5')) == 'Attack at dawn'
+    assert (encrypt('Secret', 'Attack at dawn')) == '45A01F645FC35B383552544B9BF5'
+    assert (decrypt('Secret', '45A01F645FC35B383552544B9BF5')) == 'Attack at dawn'
 
 
 if __name__ == '__main__':
     test()
-    main()
 
-    # C:\Users\IA-Intern\Anaconda3\python.exe C:/Users/IA-Intern/Desktop/plaintext_file_fragmentation/rc4_4.py
+    print('RC4', RC4('key').encode_str('test'))
+    print(RC4('key').decode_str(RC4('key').encode_str('test')))
     # [127, 9, 71, 153]
     # test
+
+    print('RC4A', RC4A('key').encode_str('test'))
+    print(RC4A('key').decode_str(RC4A('key').encode_str('test')))
     # [127, 110, 31, 24]
     # test
+
+    print('VMPC', VMPC('key').encode_str('test'))
+    print(VMPC('key').decode_str(VMPC('key').encode_str('test')))
     # [19, 95, 153, 146]
     # test
+
+    print('RCDrop', RCDrop('key', 4096).encode_str('test'))
+    print(RCDrop('key', 4096).decode_str(RCDrop('key', 4096).encode_str('test')))
     # [101, 75, 195, 218]
     # test
-    # [39, 207, 480, 391]
+
+    print('RCPlus', RCPlus('key').encode_str('test'))
+    print(RCPlus('key').decode_str(RCPlus('key').encode_str('test')))
+    # [39, 207, 224, 135]
     # test
