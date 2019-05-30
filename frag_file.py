@@ -1,6 +1,7 @@
 """
 fragment a file into multiple smaller ascii files
 """
+import base64
 import glob
 import hashlib
 import io
@@ -10,7 +11,7 @@ import random
 import time
 import warnings
 
-from frag_rc4 import RC4
+from frag_blowfish import BlowfishCipher
 from frag_utils import a85decode, a85encode, password_to_bytes
 from frag_utils import hash_content, hash_file
 
