@@ -8,9 +8,10 @@ Follows form of a `Programming Praxis exercise`_.
 """
 
 import textwrap
+
 try:
     import readline
-except ImportError: # Only available on POSIX, but no big deal.
+except ImportError:  # Only available on POSIX, but no big deal.
     pass
 
 
@@ -19,7 +20,7 @@ def initialize(key):
     as the first step in RC4.
     Note: indices in key greater than 255 will be ignored.
     """
-    k = range(256)
+    k = list(range(256))
     j = 0
     for i in range(256):
         j = (j + k[i] + key[i % len(key)]) % 256
@@ -43,7 +44,7 @@ def run_rc4(k, text):
     random_byte_gen = gen_random_bytes(k)
     for char in text:
         byte = ord(char)
-        cipher_byte = byte ^ random_byte_gen.next()
+        cipher_byte = byte ^ next(random_byte_gen)
         cipher_chars.append(chr(cipher_byte))
     return ''.join(cipher_chars)
 
@@ -53,45 +54,42 @@ def run_rc4(k, text):
 
 def loop_user_query(k):
     """Raises EOFError when the user uses an EOT escape sequence (i.e. ^D)."""
-    quotes = "'\""
     while True:
-        text = raw_input('Enter plain or cipher text: ')
-        if text[0] == text[-1] and text[0] in quotes:
-            # Unescape presumed ciphertext.
-            print 'Unescaping ciphertext...'
-            text = text[1:-1].decode('string_escape')
-        k_copy = list(k)
-        print 'Your RC4 text is:', repr(run_rc4(k_copy, text))
-        print
+        text = input('Enter plain or cipher text: ')
+        stuff = run_rc4(list(k), text)
+        print('Your RC4 text is:', repr(stuff))
+
+        print('decoded', run_rc4(list(k), stuff))
+        print()
 
 
 def print_prologue():
     title = 'RC4 Utility'
-    print '=' * len(title)
-    print title
-    print '=' * len(title)
+    print('=' * len(title))
+    print(title)
+    print('=' * len(title))
     explanation = """The output values are valid Python strings. They may
 contain escape characters of the form \\xhh to avoid confusing your terminal
 emulator. Only the first 256 characters of the encryption key are used."""
     for line in textwrap.wrap(explanation, width=79):
-        print line
-    print
+        print(line)
+    print()
 
 
 def main():
     """Present a command-line interface to the cipher."""
     print_prologue()
     # Acquire initial cipher values.
-    key = raw_input('Enter an encryption key: ')
-    print
+    key = input('Enter an encryption key: ')
+    print()
     key = [ord(char) for char in key]
     k = initialize(key)
     # Perform cipher until exit.
     try:
         loop_user_query(k)
     except EOFError:
-        print
-        print 'Have a pleasant day!'
+        print()
+        print('Have a pleasant day!')
 
 
 if __name__ == '__main__':
