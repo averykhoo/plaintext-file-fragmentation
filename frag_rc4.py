@@ -1,26 +1,57 @@
-def rc4(key, input_bytes, initialization_vector=b''):
-    if len(initialization_vector):
-        skip = 510 + sum(c << i for i, c in enumerate(initialization_vector)) & 0xFFFF
-    else:
-        skip = 0
+from typing import Union
 
+
+def rc4(key: Union[str, bytes, bytearray],
+        input_bytes: Union[bytes, bytearray],
+        initialization_vector: Union[bytes, bytearray] = b'') -> bytearray:
+    """
+    single-function RC4-drop stream encryption
+    uses IV to determine how much of keystream to skip
+    to mimic RC4-drop-768, set IV to b'\xfe\x02'
+
+    :param key: 1 to 256 bytes
+    :param input_bytes: data to encrypt / decrypt
+    :param initialization_vector: 1 to 16 bytes
+    :return:
+    """
+    if not isinstance(key, (str, bytes, bytearray)):
+        raise TypeError('key should be bytes')
+    if not isinstance(input_bytes, (bytes, bytearray)):
+        raise TypeError('input should be bytes')
+    if not isinstance(initialization_vector, (bytes, bytearray)):
+        raise TypeError('IV should be bytes')
+    assert len(key) > 0
+
+    # convert to bytes (kind of)
+    if isinstance(key, str):
+        key = [ord(char) for char in key[:256]]
     key_length = len(key)
 
+    # generate S-box
     j = 0
     S = list(range(256))
     for i in range(256):
         j = (j + S[i] + key[i % key_length]) & 0xFF
         S[i], S[j] = S[j], S[i]
 
+    # init variables
     i = 0
     j = 0
-    for _ in range(skip):
-        i = (i + 1) & 0xFF
-        j = (j + S[i]) & 0xFF
-        S[i], S[j] = S[j], S[i]
 
-    input_bytes = bytearray(input_bytes)
+    # skip N bytes using the IV
+    if len(initialization_vector):
+        skip = 510 + sum(c << i for i, c in enumerate(initialization_vector[:16])) & 0xFFFF
 
+        for _ in range(skip):
+            i = (i + 1) & 0xFF
+            j = (j + S[i]) & 0xFF
+            S[i], S[j] = S[j], S[i]
+
+    # convert to mutable bytearray
+    if isinstance(input_bytes, bytes):
+        input_bytes = bytearray(input_bytes)
+
+    # in-place xor with key stream
     for idx in range(len(input_bytes)):
         i += 1
         i &= 0xFF
