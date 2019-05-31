@@ -17,7 +17,6 @@ from frag_utils import hash_content, hash_file
 
 MAGIC_STRING = 'text/a85+fragment+RC4'  # follow mime type convention because why not
 HASH_FUNCTION = 'sha1'
-RC4_DROP = 4321
 
 assert HASH_FUNCTION in ['md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512']
 

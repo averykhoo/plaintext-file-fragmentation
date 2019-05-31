@@ -64,7 +64,7 @@ def rc4a_stream(key):
 
 
 def rc4a_encode(key, input_bytes, initialization_vector=b''):
-    skip = sum(c << i for i, c in enumerate(initialization_vector)) & 0xFFFF
+    skip = 510 + sum(c << i for i, c in enumerate(initialization_vector)) & 0xFFFF
 
     keystream = rc4a_stream(key)
     for _ in range(skip):
