@@ -1,3 +1,38 @@
+def rc4(key, input_bytes, initialization_vector=b''):
+    if len(initialization_vector):
+        skip = 510 + sum(c << i for i, c in enumerate(initialization_vector)) & 0xFFFF
+    else:
+        skip = 0
+
+    key_length = len(key)
+
+    j = 0
+    S = list(range(256))
+    for i in range(256):
+        j = (j + S[i] + key[i % key_length]) & 0xFF
+        S[i], S[j] = S[j], S[i]
+
+    i = 0
+    j = 0
+    for _ in range(skip):
+        i = (i + 1) & 0xFF
+        j = (j + S[i]) & 0xFF
+        S[i], S[j] = S[j], S[i]
+
+    input_bytes = bytearray(input_bytes)
+
+    for idx in range(len(input_bytes)):
+        i += 1
+        i &= 0xFF
+        j += S[i]
+        j &= 0xFF
+        S[i], S[j] = S[j], S[i]
+
+        input_bytes[idx] ^= S[(S[i] + S[j]) & 0xFF]
+
+    return input_bytes
+
+
 def rc4_stream(key):
     # key as numbers
     # key = [ord(char) for char in key[:256]]
@@ -287,10 +322,11 @@ def test():
     #     return RC4(key).decode_str(codecs.decode(plaintext, 'hex_codec'))
 
     def encrypt(key, plaintext):
-        return codecs.encode(bytes(rc4_encode(key, plaintext.encode('utf8'))), 'hex_codec').decode('ascii').upper()
+        return codecs.encode(bytes(rc4(key.encode('ascii'), plaintext.encode('utf8'))), 'hex_codec').decode(
+            'ascii').upper()
 
     def decrypt(key, plaintext):
-        return rc4_encode(key, codecs.decode(plaintext, 'hex_codec')).decode('utf8')
+        return rc4(key.encode('ascii'), codecs.decode(plaintext, 'hex_codec')).decode('utf8')
 
     # Test case 1
     # key = '4B6579' # 'Key' in hex

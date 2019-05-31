@@ -11,7 +11,7 @@ import random
 import time
 import warnings
 
-from frag_rc4 import rc4a_encode
+from frag_rc4 import rc4
 from frag_utils import a85decode, a85encode, password_to_bytes
 from frag_utils import hash_content, hash_file
 
