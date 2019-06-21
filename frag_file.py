@@ -74,9 +74,16 @@ def fragment_file(file_path, output_dir, password=None, max_size=22000000, size_
 
             # encrypt data
             if password is not None:
-                cipher = RC4(password_to_bytes(password), RC4_DROP)
-                fragment_encrypted = cipher.encode_decode(fragment_raw)
+                initialization_vector = os.urandom(8)
+                # # usbe blowfish
+                # cipher = BlowfishCipher(password_to_bytes(password))
+                # fragment_encrypted = b"".join(cipher.encrypt_cfb(fragment_raw, initialization_vector))
+
+                # use RC4 (faster)
+                fragment_encrypted = rc4(password_to_bytes(password), fragment_raw,
+                                         initialization_vector=initialization_vector)
             else:
+                initialization_vector = b''
                 fragment_encrypted = fragment_raw
 
             if verbose:
@@ -85,12 +92,13 @@ def fragment_file(file_path, output_dir, password=None, max_size=22000000, size_
                                                                   fragment_start + fragment_size))
 
             # generate json header
-            header = json.dumps({'file_name':      file_name.decode('ascii'),
-                                 'file_hash':      file_hash,
-                                 'file_size':      file_size,
-                                 'fragment_start': fragment_start,
-                                 'fragment_hash':  fragment_hash,
-                                 'fragment_size':  fragment_size,
+            header = json.dumps({'file_name':             file_name.decode('ascii'),
+                                 'file_hash':             file_hash,
+                                 'file_size':             file_size,
+                                 'fragment_start':        fragment_start,
+                                 'fragment_hash':         fragment_hash,
+                                 'fragment_size':         fragment_size,
+                                 'initialization_vector': base64.b64encode(initialization_vector).decode('ascii'),
                                  }, separators=(',', ':'))
 
             # write fragment file
@@ -133,6 +141,7 @@ class TextFragment:
         fragment_start:         <first byte of fragment data>
         fragment_hash:          <fragment hash> (base64)
         fragment_size:          <fragment size> (int)
+        initialization_vector:  <initialization vector> (base64)
     """
 
     def __init__(self, fragment_path, password=None):
@@ -155,6 +164,7 @@ class TextFragment:
         self.fragment_start = header['fragment_start']
         self.fragment_hash = header['fragment_hash']
         self.fragment_size = header['fragment_size']
+        self.initialization_vector = base64.b64decode(header['initialization_vector'].encode('ascii'))
 
     def read(self, length=None):
         """
@@ -172,9 +182,14 @@ class TextFragment:
             decoded_content = a85decode(f.readline().rstrip())
 
             # decrypt data
-            if self.password is not None:
-                cipher = RC4(password_to_bytes(self.password), RC4_DROP)
-                decrypted_content = cipher.encode_decode(decoded_content)
+            if self.password is not None and self.initialization_vector:
+                # # use blowfish
+                # cipher = BlowfishCipher(password_to_bytes(self.password))
+                # decrypted_content = b"".join(cipher.decrypt_cfb(decoded_content, self.initialization_vector))
+
+                # use RC4 (faster)
+                decrypted_content = rc4(password_to_bytes(self.password), decoded_content,
+                                        initialization_vector=self.initialization_vector)
             else:
                 decrypted_content = decoded_content
 
