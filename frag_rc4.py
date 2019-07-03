@@ -32,10 +32,10 @@ def rc4(key: Union[str, bytes, bytearray],
 
     # generate S-box
     j = 0
-    S = list(range(256))
+    s = list(range(256))  # type: List[int]
     for i in range(256):
-        j = (j + S[i] + key[i % key_length]) & 0xFF
-        S[i], S[j] = S[j], S[i]
+        j = (j + s[i] + key[i % key_length]) & 0xFF
+        s[i], s[j] = s[j], s[i]
 
     # init variables
     i = 0
@@ -47,8 +47,8 @@ def rc4(key: Union[str, bytes, bytearray],
 
         for _ in range(skip):
             i = (i + 1) & 0xFF
-            j = (j + S[i]) & 0xFF
-            S[i], S[j] = S[j], S[i]
+            j = (j + s[i]) & 0xFF
+            s[i], s[j] = s[j], s[i]
 
     # don't destroy the input bytes
     if isinstance(input_bytes, bytes):
@@ -60,11 +60,11 @@ def rc4(key: Union[str, bytes, bytearray],
     for idx in range(len(output_bytes)):
         i += 1
         i &= 0xFF
-        j += S[i]
+        j += s[i]
         j &= 0xFF
-        S[i], S[j] = S[j], S[i]
+        s[i], s[j] = s[j], s[i]
 
-        output_bytes[idx] ^= S[(S[i] + S[j]) & 0xFF]
+        output_bytes[idx] ^= s[(s[i] + s[j]) & 0xFF]
 
     return output_bytes
 
@@ -75,29 +75,29 @@ def rc4_stream(key):
     key_length = len(key)
 
     j = 0
-    S = list(range(256))
+    s = list(range(256))  # type: List[int]
     for i in range(256):
-        j = (j + S[i] + key[i % key_length]) & 0xFF
-        S[i], S[j] = S[j], S[i]
+        j = (j + s[i] + key[i % key_length]) & 0xFF
+        s[i], s[j] = s[j], s[i]
 
     i = 0
     j = 0
     while True:
         i = (i + 1) & 0xFF
 
-        j = (j + S[i]) & 0xFF
-        S[i], S[j] = S[j], S[i]
-        yield S[(S[i] + S[j]) & 0xFF]
+        j = (j + s[i]) & 0xFF
+        s[i], s[j] = s[j], s[i]
+        yield s[(s[i] + s[j]) & 0xFF]
 
 
 def rc4_encode(key, input_bytes, skip=0):
-    keystream = rc4_stream(key)
+    key_stream = rc4_stream(key)
     for _ in range(skip):
-        next(keystream)
+        next(key_stream)
 
     input_bytes = bytearray(input_bytes)
     for i in range(len(input_bytes)):
-        input_bytes[i] ^= next(keystream)
+        input_bytes[i] ^= next(key_stream)
 
     return input_bytes
 
@@ -108,16 +108,16 @@ def rc4a_stream(key):
     key_length = len(key)
 
     j = 0
-    S1 = list(range(256))  # type: List[int]
+    s1 = list(range(256))  # type: List[int]
     for i in range(256):
-        j = (j + S1[i] + key[i % key_length]) & 0xFF
-        S1[i], S1[j] = S1[j], S1[i]
+        j = (j + s1[i] + key[i % key_length]) & 0xFF
+        s1[i], s1[j] = s1[j], s1[i]
 
     j = 0
-    S2 = list(range(256))  # type: List[int]
+    s2 = list(range(256))  # type: List[int]
     for i in range(256):
-        j = (j + S2[i] + key[i % key_length]) & 0xFF
-        S2[i], S2[j] = S2[j], S2[i]
+        j = (j + s2[i] + key[i % key_length]) & 0xFF
+        s2[i], s2[j] = s2[j], s2[i]
 
     i = 0
     j1 = 0
@@ -125,31 +125,31 @@ def rc4a_stream(key):
     while True:
         i = (i + 1) & 0xFF
 
-        j1 = (j1 + S1[i]) & 0xFF
-        S1[i], S1[j1] = S1[j1], S1[i]
-        yield S2[(S1[i] + S1[j1]) & 0xFF]
+        j1 = (j1 + s1[i]) & 0xFF
+        s1[i], s1[j1] = s1[j1], s1[i]
+        yield s2[(s1[i] + s1[j1]) & 0xFF]
 
-        j2 = (j2 + S2[i]) & 0xFF
-        S2[i], S2[j2] = S2[j2], S2[i]
-        yield S1[(S2[i] + S2[j2]) & 0xFF]
+        j2 = (j2 + s2[i]) & 0xFF
+        s2[i], s2[j2] = s2[j2], s2[i]
+        yield s1[(s2[i] + s2[j2]) & 0xFF]
 
 
 def rc4a_encode(key, input_bytes, initialization_vector=b''):
     skip = 510 + sum(c << i for i, c in enumerate(initialization_vector)) & 0xFFFF
 
-    keystream = rc4a_stream(key)
+    key_stream = rc4a_stream(key)
     for _ in range(skip):
-        next(keystream)
+        next(key_stream)
 
     input_bytes = bytearray(input_bytes)
     for i in range(len(input_bytes)):
-        input_bytes[i] ^= next(keystream)
+        input_bytes[i] ^= next(key_stream)
 
     return input_bytes
 
 
 class RC4(object):
-    def __init__(self, key: Union[str, bytes, bytearray], skip=None):
+    def __init__(self, key: Union[str, bytes, bytearray]):
         """
         >>> RC4('key').encode_str('test')
         [127, 9, 71, 153]
@@ -157,41 +157,43 @@ class RC4(object):
         'test'
 
         :param key:
-        :param skip:
         """
         self.i = 0
         self.j = 0
-        self.S = self.KSA(key)
+        self.s = self.KSA(key)
 
-    def KSA(self, key):
+    # noinspection PyPep8Naming
+    @staticmethod
+    def KSA(key):
         """
         Key Scheduling Algorithm (from wikipedia):
 
         for i from 0 to 255
-            S[i] := i
+            s[i] := i
         endfor
         j := 0
         for i from 0 to 255
-            j := (j + S[i] + key[i mod keylength]) mod 256
-            swap values of S[i] and S[j]
+            j := (j + s[i] + key[i mod keylength]) mod 256
+            swap values of s[i] and s[j]
         endfor
 
         :param key:
-        :return: new S box
+        :return: new s box
         """
         if isinstance(key, str):
             key = [ord(char) for char in key]  # key.encode('utf8')
 
         key_length = len(key)
-        S = list(range(256))
+        s = list(range(256))
 
         j = 0
         for i in range(256):
-            j = (j + S[i] + key[i % key_length]) & 0xFF
-            S[i], S[j] = S[j], S[i]
+            j = (j + s[i] + key[i % key_length]) & 0xFF
+            s[i], s[j] = s[j], s[i]
 
-        return S
+        return s
 
+    # noinspection PyPep8Naming
     def PRGA(self, size):
         """
         Psudo Random Generation Algorithm (from wikipedia):
@@ -201,8 +203,8 @@ class RC4(object):
             i := (i + 1) mod 256
             j := (j + S[i]) mod 256
             swap values of S[i] and S[j]
-            K := S[(S[i] + S[j]) mod 256]
-            output K
+            k := S[(S[i] + S[j]) mod 256]
+            output k
         endwhile
 
         :param size:
@@ -213,10 +215,10 @@ class RC4(object):
         # while GeneratingOutput:
         for _ in range(size):
             self.i = (self.i + 1) & 0xFF
-            self.j = (self.j + self.S[self.i]) & 0xFF
-            self.S[self.i], self.S[self.j] = self.S[self.j], self.S[self.i]
-            K = self.S[(self.S[self.i] + self.S[self.j]) & 0xFF]
-            key_stream.append(K)
+            self.j = (self.j + self.s[self.i]) & 0xFF
+            self.s[self.i], self.s[self.j] = self.s[self.j], self.s[self.i]
+            k = self.s[(self.s[self.i] + self.s[self.j]) & 0xFF]
+            key_stream.append(k)
 
         return key_stream
 
@@ -265,18 +267,18 @@ class RC4A(RC4):
                 self.first_op = False
 
                 self.i = (self.i + 1) & 0xFF
-                self.j = (self.j + self.S[self.i]) & 0xFF
-                self.S[self.i], self.S[self.j] = self.S[self.j], self.S[self.i]
-                K = self.S2[(self.S[self.i] + self.S[self.j]) & 0xFF]
-                key_stream.append(K)
+                self.j = (self.j + self.s[self.i]) & 0xFF
+                self.s[self.i], self.s[self.j] = self.s[self.j], self.s[self.i]
+                k = self.S2[(self.s[self.i] + self.s[self.j]) & 0xFF]
+                key_stream.append(k)
 
             else:
                 self.first_op = True
 
                 self.j2 = (self.j2 + self.S2[self.i]) & 0xFF
                 self.S2[self.i], self.S2[self.j2] = self.S2[self.j2], self.S2[self.i]
-                K = self.S[(self.S2[self.i] + self.S2[self.j2]) & 0xFF]
-                key_stream.append(K)
+                k = self.s[(self.S2[self.i] + self.S2[self.j2]) & 0xFF]
+                key_stream.append(k)
 
         return key_stream
 
@@ -301,15 +303,15 @@ class VMPC(RC4):
         key_stream = []
 
         for _ in range(size):
-            a = self.S[self.i]
-            self.j = self.S[(self.j + a) & 0xFF]
-            b = self.S[self.j]
+            a = self.s[self.i]
+            self.j = self.s[(self.j + a) & 0xFF]
+            b = self.s[self.j]
 
-            K = self.S[(self.S[b] + 1) & 0xFF]
-            key_stream.append(K)
+            k = self.s[(self.s[b] + 1) & 0xFF]
+            key_stream.append(k)
 
-            self.S[self.i] = b
-            self.S[self.j] = a
+            self.s[self.i] = b
+            self.s[self.j] = a
             self.i = (self.i + 1) & 0xFF
 
         return key_stream
@@ -336,21 +338,21 @@ class RCPlus(RC4):
 
         for _ in range(size):
             self.i = (self.i + 1) & 0xFF
-            a = self.S[self.i]
+            a = self.s[self.i]
 
             self.j = (self.j + a) & 0xFF
-            b = self.S[self.j]
+            b = self.s[self.j]
 
-            self.S[self.i] = b
-            self.S[self.j] = a
+            self.s[self.i] = b
+            self.s[self.j] = a
 
             v = (self.i << 5 ^ self.j >> 3) & 0xFF
             w = (self.j << 5 ^ self.i >> 3) & 0xFF
 
-            c = (self.S[v] + self.S[self.j] + self.S[w]) & 0xFF
-            K = (self.S[(a + b) % 256] + self.S[c ^ 0xAA]) & 0xFF ^ self.S[(self.j + b) & 0xFF]
+            c = (self.s[v] + self.s[self.j] + self.s[w]) & 0xFF
+            k = (self.s[(a + b) % 256] + self.s[c ^ 0xAA]) & 0xFF ^ self.s[(self.j + b) & 0xFF]
 
-            key_stream.append(K)
+            key_stream.append(k)
 
         return key_stream
 
@@ -415,7 +417,7 @@ def _encrypt_to_hex(key, text):
     '45A01F645FC35B383552544B9BF5'
 
     :param key:
-    :param plaintext:
+    :param text:
     :return:
     """
     return codecs.encode(bytes(rc4(key.encode('ascii'), text.encode('utf8'))), 'hex_codec').decode('ascii').upper()
@@ -445,7 +447,7 @@ def _decrypt_from_hex(key, text):
     'Attack at dawn'
 
     :param key:
-    :param plaintext:
+    :param text:
     :return:
     """
     return rc4(key.encode('ascii'), codecs.decode(text, 'hex_codec')).decode('utf8')
