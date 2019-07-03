@@ -10,7 +10,7 @@ def rc4(key: Union[str, bytes, bytearray],
     """
     single-function RC4-drop stream encryption
     uses IV to determine how much of keystream to skip
-    to mimic RC4-drop-768, set IV to b'\xfe\x02'
+    e.g. to mimic RC4-drop-768, set IV to b'\xfe\x02'
 
     :param key: 1 to 256 bytes
     :param input_bytes: data to encrypt / decrypt
