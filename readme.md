@@ -4,6 +4,7 @@
 -   breaks a file or folder into a bunch of ascii plaintext files
 
 ##  usage
+-   you'll need python 3
 -   put files/dirs in input folder (`input`)
 -   run encode *(about 1 min per 100 MB)*
 -   transfer text files to other place (`ascii85_encoded`)
