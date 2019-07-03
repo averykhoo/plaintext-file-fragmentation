@@ -11,8 +11,8 @@ def rc4(key: Union[str, bytes, bytearray],
 
     :param key: 1 to 256 bytes
     :param input_bytes: data to encrypt / decrypt
-    :param initialization_vector: 1 to 16 bytes
-    :return:
+    :param initialization_vector: 1 to 16 bytes (remainder will be ignored)
+    :return: encoded bytes
     """
     if not isinstance(key, (str, bytes, bytearray)):
         raise TypeError('key should be bytes')
@@ -47,21 +47,23 @@ def rc4(key: Union[str, bytes, bytearray],
             j = (j + S[i]) & 0xFF
             S[i], S[j] = S[j], S[i]
 
-    # convert to mutable bytearray
+    # don't destroy the input bytes
     if isinstance(input_bytes, bytes):
-        input_bytes = bytearray(input_bytes)
+        output_bytes = bytearray(input_bytes)  # bytes are immutable
+    else:
+        output_bytes = input_bytes[:]  # shallow copy
 
     # in-place xor with key stream
-    for idx in range(len(input_bytes)):
+    for idx in range(len(output_bytes)):
         i += 1
         i &= 0xFF
         j += S[i]
         j &= 0xFF
         S[i], S[j] = S[j], S[i]
 
-        input_bytes[idx] ^= S[(S[i] + S[j]) & 0xFF]
+        output_bytes[idx] ^= S[(S[i] + S[j]) & 0xFF]
 
-    return input_bytes
+    return output_bytes
 
 
 def rc4_stream(key):
