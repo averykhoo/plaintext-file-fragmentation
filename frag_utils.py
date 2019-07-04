@@ -3,8 +3,6 @@ import hashlib
 import os
 import struct
 
-BYTES_TYPES = (bytes, bytearray)  # Types acceptable as binary data
-
 
 def hash_file(file_path, hash_func='SHA1'):
     hash_func = hash_func.strip().lower()
@@ -33,7 +31,7 @@ def _to_bytes(s, encoding='ascii'):
             if encoding == 'ascii':
                 raise ValueError('string argument should contain only ASCII characters')
             raise
-    if isinstance(s, BYTES_TYPES):
+    if isinstance(s, (bytes, bytearray)):
         return s
     try:
         return memoryview(s).tobytes()
@@ -57,7 +55,7 @@ _A85END = b"~>"
 
 def _85encode(b, chars, chars2, pad=False, foldnuls=False, foldspaces=False):
     # Helper function for a85encode and b85encode
-    if not isinstance(b, BYTES_TYPES):
+    if not isinstance(b, (bytes, bytearray)):
         b = memoryview(b).tobytes()
 
     padding = (-len(b)) % 4
