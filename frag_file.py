@@ -41,7 +41,7 @@ def fragment_file(file_path, output_dir, password=None, max_size=22000000, size_
     assert sum(fragment_sizes) == os.path.getsize(file_path)
 
     # get static values used in header info
-    file_name = os.path.basename(file_path).encode('punycode')
+    file_name = os.path.basename(file_path)
     file_hash = hash_file(file_path, hash_func=HASH_FUNCTION)
     file_size = os.path.getsize(file_path)
     if verbose:
@@ -86,13 +86,14 @@ def fragment_file(file_path, output_dir, password=None, max_size=22000000, size_
                                                                   fragment_start + fragment_size))
 
             # generate json header
-            header = json.dumps({'file_name':             file_name.decode('ascii'),
+            initialization_vector_hex = codecs.encode(initialization_vector, 'hex_codec').decode('ascii')
+            header = json.dumps({'file_name':             file_name.encode('idna').decode('ascii'),
                                  'file_hash':             file_hash,
                                  'file_size':             file_size,
                                  'fragment_start':        fragment_start,
                                  'fragment_hash':         fragment_hash,
                                  'fragment_size':         fragment_size,
-                                 'initialization_vector': codecs.encode(initialization_vector, 'hex_codec'),
+                                 'initialization_vector': initialization_vector_hex,
                                  }, separators=(',', ':'))
 
             # write fragment file
@@ -152,13 +153,13 @@ class TextFragment:
             self.content_pos = f.tell()
 
         # parse header
-        self.file_name = header['file_name'].decode('punycode')
+        self.file_name = header['file_name'].encode('ascii').decode('idna')
         self.file_hash = header['file_hash']
         self.file_size = header['file_size']
         self.fragment_start = header['fragment_start']
         self.fragment_hash = header['fragment_hash']
         self.fragment_size = header['fragment_size']
-        self.initialization_vector = codecs.decode(header['initialization_vector'], 'hex_codec')
+        self.initialization_vector = codecs.decode(header['initialization_vector'].encode('ascii'), 'hex_codec')
 
     def read(self, length=None):
         """
