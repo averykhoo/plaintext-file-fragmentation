@@ -43,7 +43,7 @@ def fragment_file(file_path, output_dir, password=None, max_size=22000000, size_
     assert sum(fragment_sizes) == os.path.getsize(file_path)
 
     # get static values used in header info
-    file_name = a85encode(os.path.basename(file_path).encode('utf8'))
+    file_name = os.path.basename(file_path).encode('punycode')
     file_hash = hash_file(file_path, hash_func=HASH_FUNCTION)
     file_size = os.path.getsize(file_path)
     if verbose:
@@ -154,7 +154,7 @@ class TextFragment:
             self.content_pos = f.tell()
 
         # parse header
-        self.file_name = a85decode(header['file_name']).decode('utf8')
+        self.file_name = header['file_name'].decode('punycode')
         self.file_hash = header['file_hash']
         self.file_size = header['file_size']
         self.fragment_start = header['fragment_start']
