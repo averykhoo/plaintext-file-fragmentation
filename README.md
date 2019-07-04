@@ -15,12 +15,12 @@
 
 ##  how it works
 ### `frag_encode.py`
-1.  gzip (using `tarfile`)
-2.  automatically break into chunks
-3.  encryt each chunk (using the rc4-drop stream cipher)
-4.  a85 encode each chunk
-5.  write to text file (with metadata in header)
-6.  backup input files to a timestamped folder 
+1.  tar and gzip to binary file on disk
+2.  break file into random-sized chunks 
+3.  encrypt each chunk separately using the rc4-drop stream cipher (this might be bad practice?)
+4.  a85 encode each encrypted chunk
+5.  write each encoded chunk to a text file (with metadata as json in header line)
+6.  backup original input files to a timestamped folder 
 
 ### `frag_decode.py`
 1.  the above steps in reverse
@@ -29,6 +29,7 @@
 
 ##  to-do
 -   setup logging, or provide receipts when zipping/unzipping?
+-   encrypt original file name?
 
 ##  manual alternative
 1.  zip your file
