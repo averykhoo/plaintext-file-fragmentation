@@ -2,9 +2,7 @@
 fragment a file into multiple smaller ascii files
 """
 import codecs
-import glob
 import hashlib
-import io
 import json
 import os
 import random
@@ -60,7 +58,7 @@ def fragment_file(file_path, output_dir, password=None, max_size=22000000, size_
 
     # iterate through input file only once
     fragment_paths = []
-    with io.open(file_path, 'rb') as f_in:
+    with open(file_path, 'rb') as f_in:
         for fragment_size in fragment_sizes:
             # get start byte
             fragment_start = f_in.tell()
@@ -103,7 +101,7 @@ def fragment_file(file_path, output_dir, password=None, max_size=22000000, size_
             err = None
             for _attempt in range(3):
                 try:
-                    with io.open(fragment_path + '.tempfile', mode='wt', encoding='ascii', newline='\n') as f_out:
+                    with open(fragment_path + '.tempfile', mode='wt', encoding='ascii', newline='\n') as f_out:
                         f_out.write(MAGIC_STRING + u'\n')
                         f_out.write(header + u'\n')
                         f_out.write(a85encode(fragment_encrypted).decode('ascii') + u'\n')
@@ -148,7 +146,7 @@ class TextFragment:
         self.password = password
 
         # verify magic string and read header
-        with io.open(fragment_path, mode='rt', encoding='ascii') as f:
+        with open(fragment_path, mode='rt', encoding='ascii') as f:
             assert f.readline().strip() == MAGIC_STRING
             header = json.loads(f.readline())
             self.content_pos = f.tell()
@@ -172,7 +170,7 @@ class TextFragment:
             length = self.fragment_size
         assert length <= self.fragment_size
 
-        with io.open(self.fragment_path, mode='rt', encoding='ascii') as f:
+        with open(self.fragment_path, mode='rt', encoding='ascii') as f:
             # read and decode content to bytes
             f.seek(self.content_pos)
             decoded_content = a85decode(f.readline().rstrip())
@@ -340,7 +338,7 @@ class FragmentedFile:
         # start extraction
         temp_path = file_path + '.partial'
         try:
-            with io.open(temp_path, 'wb') as f:
+            with open(temp_path, 'wb') as f:
                 # init full content hash
                 hash_obj = getattr(hashlib, HASH_FUNCTION)()
 
@@ -377,8 +375,10 @@ class FragmentedFile:
 def restore_files(input_dir, password=None, file_name=None, remove_originals=True, overwrite=False, verbose=False):
     fragmented_files = dict()
 
-    for path in glob.glob(os.path.join(input_dir, '*.txt')):
-        text_fragment = TextFragment(path, password=password)
+    for txt_name in os.listdir(input_dir):
+        if not txt_name.endswith('.txt'):
+            continue
+        text_fragment = TextFragment(os.path.join(input_dir, txt_name), password=password)
         fragmented_files.setdefault(text_fragment.file_hash, FragmentedFile(text_fragment)).add(text_fragment)
 
     for file_hash, file_fragments in fragmented_files.items():
