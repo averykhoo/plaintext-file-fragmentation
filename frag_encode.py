@@ -8,6 +8,7 @@ from frag_file import fragment_file
 this_folder = os.path.abspath(os.path.dirname(__file__))
 source_folder = os.path.join(this_folder, r'input')
 output_folder = os.path.join(this_folder, r'ascii85_encoded')
+password = 'correct horse battery staple'  # https://xkcd.com/936/
 
 if __name__ == '__main__':
     # create folder to place input files and folders
@@ -47,7 +48,7 @@ if __name__ == '__main__':
 
         # plaintext fragmentation (size determined by defaults)
         print('fragmenting <{}> to <{}>'.format(archive_path, output_folder))
-        fragment_paths = fragment_file(archive_path, output_folder, password='password', verbose=True)
+        fragment_paths = fragment_file(archive_path, output_folder, password=password, verbose=True)
 
         print('elapsed: {} seconds'.format(time.time() - t))
 

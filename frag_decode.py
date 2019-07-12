@@ -7,6 +7,7 @@ from frag_file import restore_files
 this_folder = os.path.abspath(os.path.dirname(__file__))
 source_folder = os.path.join(this_folder, r'ascii85_encoded')
 output_folder = os.path.join(this_folder, r'output_decoded')
+password = 'correct horse battery staple'  # https://xkcd.com/936/
 
 if __name__ == '__main__':
     # create folder to place plaintext fragment files
@@ -29,7 +30,7 @@ if __name__ == '__main__':
         t = time.time()
 
         # decode each bunch of fragments separately
-        for temp_archive_path in restore_files(source_folder, password='password', verbose=True):
+        for temp_archive_path in restore_files(source_folder, password=password, verbose=True):
 
             # did not decode
             if temp_archive_path is None:

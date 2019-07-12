@@ -89,8 +89,8 @@ def fragment_file(file_path, output_dir, password=None, max_size=22000000, size_
                                                                   fragment_start + fragment_size))
 
             # generate json header
-            initialization_vector_hex = codecs.encode(initialization_vector, 'hex_codec').decode('ascii')
-            password_salt_hex = codecs.encode(password_salt, 'hex_codec').decode('ascii')
+            initialization_vector_hex = codecs.encode(initialization_vector, 'hex_codec').decode('ascii').upper()
+            password_salt_hex = codecs.encode(password_salt, 'hex_codec').decode('ascii').upper()
             header = json.dumps({'file_name':             file_name.encode('idna').decode('ascii'),
                                  'file_hash':             file_hash,
                                  'file_size':             file_size,
