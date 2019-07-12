@@ -73,11 +73,14 @@ def fragment_file(file_path, output_dir, password=None, max_size=22000000, size_
 
             # encrypt data
             if password is not None:
+                password_salt = os.urandom(8)
                 initialization_vector = os.urandom(8)
-                fragment_encrypted = rc4(password_to_bytes(password), fragment_raw,
+                fragment_encrypted = rc4(password_to_bytes(password, salt=password_salt), fragment_raw,
                                          initialization_vector=initialization_vector)
+
             else:
                 initialization_vector = b''
+                password_salt = b''
                 fragment_encrypted = fragment_raw
 
             if verbose:
@@ -87,6 +90,7 @@ def fragment_file(file_path, output_dir, password=None, max_size=22000000, size_
 
             # generate json header
             initialization_vector_hex = codecs.encode(initialization_vector, 'hex_codec').decode('ascii')
+            password_salt_hex = codecs.encode(password_salt, 'hex_codec').decode('ascii')
             header = json.dumps({'file_name':             file_name.encode('idna').decode('ascii'),
                                  'file_hash':             file_hash,
                                  'file_size':             file_size,
@@ -94,6 +98,7 @@ def fragment_file(file_path, output_dir, password=None, max_size=22000000, size_
                                  'fragment_hash':         fragment_hash,
                                  'fragment_size':         fragment_size,
                                  'initialization_vector': initialization_vector_hex,
+                                 'password_salt':         password_salt_hex,
                                  }, separators=(',', ':'))
 
             # write fragment file
@@ -160,6 +165,7 @@ class TextFragment:
         self.fragment_hash = header['fragment_hash']
         self.fragment_size = header['fragment_size']
         self.initialization_vector = codecs.decode(header['initialization_vector'].encode('ascii'), 'hex_codec')
+        self.password_salt = codecs.decode(header['password_salt'].encode('ascii'), 'hex_codec')
 
     def read(self, length=None):
         """
@@ -178,8 +184,8 @@ class TextFragment:
 
             # decrypt data
             if self.password is not None and self.initialization_vector:
-                decrypted_content = rc4(password_to_bytes(self.password), decoded_content,
-                                        initialization_vector=self.initialization_vector)
+                decrypted_content = rc4(password_to_bytes(self.password, salt=self.password_salt),
+                                        decoded_content, initialization_vector=self.initialization_vector)
             else:
                 decrypted_content = decoded_content
 

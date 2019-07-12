@@ -39,8 +39,8 @@ def _to_bytes(s, encoding='ascii'):
         raise TypeError('argument should be a bytes-like object or ASCII string, not {}'.format(s.__class__.__name__))
 
 
-def password_to_bytes(password_string, salt=b'salt', max_len=56):
-    return codecs.decode(hash_content(salt + _to_bytes(password_string, 'utf8')), 'hex_codec')[:max_len]
+def password_to_bytes(password_string, salt=b'salt', max_len=256):
+    return codecs.decode(hash_content(salt + _to_bytes(password_string, 'utf8'), 'SHA512'), 'hex_codec')[:max_len]
 
 
 _a85chars = [b'!', b'"', b'#', b'$', b'%', b'&', b"'", b'(', b')', b'*', b'+', b',', b'-', b'.', b'/', b'0', b'1',
