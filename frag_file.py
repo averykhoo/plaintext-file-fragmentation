@@ -73,9 +73,9 @@ def fragment_file(file_path, output_dir, password=None, max_size=22000000, size_
 
             # encrypt data
             if password is not None:
-                password_salt = os.urandom(8)
+                password_salt = os.urandom(256)
                 initialization_vector = os.urandom(8)
-                fragment_encrypted = rc4(password_to_bytes(password, salt=password_salt), fragment_raw,
+                fragment_encrypted = rc4(password_to_bytes(password, salt=password_salt, max_len=256), fragment_raw,
                                          initialization_vector=initialization_vector)
 
             else:
@@ -184,7 +184,7 @@ class TextFragment:
 
             # decrypt data
             if self.password is not None and self.initialization_vector:
-                decrypted_content = rc4(password_to_bytes(self.password, salt=self.password_salt),
+                decrypted_content = rc4(password_to_bytes(self.password, salt=self.password_salt, max_len=256),
                                         decoded_content, initialization_vector=self.initialization_vector)
             else:
                 decrypted_content = decoded_content

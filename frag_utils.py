@@ -39,7 +39,11 @@ def _to_bytes(s, encoding='ascii'):
         raise TypeError('argument should be a bytes-like object or ASCII string, not {}'.format(s.__class__.__name__))
 
 
-def password_to_bytes(password_string, salt=b'salt', max_len=256):
+def password_to_bytes(password_string, salt=b'sodium chloride', max_len=512):
+    """
+    https://crackstation.net/hashing-security.htm#salt
+    use a salt that's as long as your output
+    """
     return codecs.decode(hash_content(salt + _to_bytes(password_string, 'utf8'), 'SHA512'), 'hex_codec')[:max_len]
 
 
