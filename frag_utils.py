@@ -8,8 +8,8 @@ def hash_file(file_path, hash_func='SHA1'):
     hash_func = hash_func.strip().lower()
     assert hash_func in ['md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512']
     hash_obj = getattr(hashlib, hash_func)()
-    fd = os.open(file_path, (os.O_RDWR | os.O_BINARY))
-    for block in iter(lambda: os.read(fd, 65536), b''):
+    fd = os.open(file_path, (os.O_RDONLY | os.O_BINARY))  # the O_BINARY flag is windows-only
+    for block in iter(lambda: os.read(fd, 65536), b''):  # 2**16 is a multiple of the hash block size
         hash_obj.update(block)
     os.close(fd)
     return hash_obj.hexdigest().upper()

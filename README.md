@@ -39,3 +39,4 @@
 ##  todo:
 -   use `pathlib`
 -   backup inputs to the output folder instead?
+-   unified text fragment class for reading and writing?

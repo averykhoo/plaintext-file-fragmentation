@@ -10,9 +10,9 @@ def rc4(key: Union[str, bytes, bytearray],
     """
     single-function RC4-drop stream encryption
     uses IV to determine how much of keystream to skip
-    e.g. to mimic RC4-drop-768, set IV to b'\xfe\x02'
+    e.g. to mimic RC4-drop-768, set IV to b'\xFE\x02'
 
-    :param key: 1 to 256 bytes
+    :param key: 1 to 256 bytes (remainder will be ignored)
     :param input_bytes: data to encrypt / decrypt
     :param initialization_vector: 1 to 16 bytes (remainder will be ignored)
     :return: encoded bytes
@@ -32,7 +32,7 @@ def rc4(key: Union[str, bytes, bytearray],
 
     # generate S-box
     j = 0
-    s = list(range(256))  # type: List[int]
+    s: List[int] = list(range(256))
     for i in range(256):
         j = (j + s[i] + key[i % key_length]) & 0xFF
         s[i], s[j] = s[j], s[i]
@@ -42,8 +42,8 @@ def rc4(key: Union[str, bytes, bytearray],
     j = 0
 
     # skip N bytes using the IV
-    if len(initialization_vector):
-        skip = 510 + sum(c << i for i, c in enumerate(initialization_vector[:16])) & 0xFFFF
+    if initialization_vector:
+        skip = (510 + sum(c << i for i, c in enumerate(initialization_vector[:16]))) & 0xFFFF
 
         for _ in range(skip):
             i = (i + 1) & 0xFF

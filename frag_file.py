@@ -16,7 +16,7 @@ from frag_utils import hash_content
 from frag_utils import hash_file
 from frag_utils import password_to_bytes
 
-MAGIC_STRING = 'text/fragment+a85+RC4'  # follow mime type convention because why not
+MAGIC_STRING = 'text/fragment+a85+rc4+v2'  # follow mime type convention approximately because why not
 HASH_FUNCTION = 'sha1'  # or any of {'md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512'}
 
 
@@ -67,17 +67,16 @@ def fragment_file(file_path, output_dir, password=None, max_size=22000000, size_
             fragment_raw = f_in.read(fragment_size)
 
             # hash data
-            hash_obj = getattr(hashlib, HASH_FUNCTION)()
-            hash_obj.update(fragment_raw)
-            fragment_hash = hash_obj.hexdigest().upper()
+            fragment_hash = hash_content(fragment_raw, HASH_FUNCTION)
 
             # encrypt data
             if password is not None:
                 password_salt = os.urandom(256)
-                initialization_vector = os.urandom(8)
+                initialization_vector = os.urandom(16)
                 fragment_encrypted = rc4(password_to_bytes(password, salt=password_salt, max_len=256), fragment_raw,
                                          initialization_vector=initialization_vector)
 
+            # don't encrypt data
             else:
                 initialization_vector = b''
                 password_salt = b''
@@ -108,15 +107,14 @@ def fragment_file(file_path, output_dir, password=None, max_size=22000000, size_
             for _attempt in range(3):
                 try:
                     with open(fragment_path + '.tempfile', mode='wt', encoding='ascii', newline='\n') as f_out:
-                        f_out.write(MAGIC_STRING + u'\n')
-                        f_out.write(header + u'\n')
-                        f_out.write(a85encode(fragment_encrypted).decode('ascii') + u'\n')
+                        f_out.write(MAGIC_STRING + '\n')
+                        f_out.write(header + '\n')
+                        f_out.write(a85encode(fragment_encrypted).decode('ascii') + '\n')
                     os.rename(fragment_path + '.tempfile', fragment_path)
                     break
-                except Exception:
+                except Exception as err:
                     if os.path.exists(fragment_path + '.tempfile'):
                         os.remove(fragment_path + '.tempfile')
-                    raise
             else:
                 raise err
 
