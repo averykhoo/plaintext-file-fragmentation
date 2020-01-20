@@ -32,6 +32,10 @@
 -   encrypt original file name?
 
 ##  manual alternative
-1.  zip your file
+1.  zip your file (right-click > send to > compressed folder)
 2.  `certutil -encode -v archive.zip b64.txt`
 3.  `certutil -decode -v b64.txt archive.zip`
+
+##  todo:
+-   use `pathlib`
+-   backup inputs to the output folder instead?

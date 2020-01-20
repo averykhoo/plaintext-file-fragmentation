@@ -7,6 +7,7 @@ from frag_file import fragment_file
 
 this_folder = os.path.abspath(os.path.dirname(__file__))
 source_folder = os.path.join(this_folder, r'input')
+backup_folder = os.path.join(this_folder, r'input_archive')
 output_folder = os.path.join(this_folder, r'ascii85_encoded')
 password = 'correct horse battery staple'  # https://xkcd.com/936/
 
@@ -16,6 +17,12 @@ if __name__ == '__main__':
         assert not os.path.exists(source_folder)
         os.makedirs(source_folder)
         print('source folder <{}> does not exist, creating...'.format(source_folder))
+
+    # create backup folder
+    if not os.path.isdir(backup_folder):
+        assert not os.path.exists(backup_folder)
+        os.makedirs(backup_folder)
+        print('backup folder <{}> does not exist, creating...'.format(backup_folder))
 
     # nothing to encode
     if len(os.listdir(source_folder)) == 0:
@@ -55,7 +62,7 @@ if __name__ == '__main__':
         # remove gzip file, archive input folder
         print('deleting temp archive <{}>'.format(archive_path))
         os.remove(archive_path)
-        os.rename(source_folder, source_folder + '--' + archive_name)
+        os.rename(source_folder, backup_folder + '/input--' + archive_name)
 
         os.makedirs(source_folder)
 
