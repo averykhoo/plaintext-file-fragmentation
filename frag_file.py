@@ -7,8 +7,8 @@ import json
 import random
 import time
 import warnings
-from base64 import a85decode  # from frag_a85 import a85decode
-from base64 import a85encode  # from frag_a85 import a85encode
+from base64 import a85decode
+from base64 import a85encode
 from os import urandom
 from pathlib import Path
 from typing import Generator
