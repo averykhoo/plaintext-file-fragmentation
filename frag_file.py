@@ -30,7 +30,8 @@ def fragment_file(file_path: Path,
                   password: Optional[str] = None,
                   max_size: int = 22000000,
                   size_range: int = 4000000,
-                  verbose: bool = False) -> List[Path]:
+                  verbose: bool = False
+                  ) -> List[Path]:
     """
     see TextFragment for details
     """
@@ -391,7 +392,7 @@ def restore_files(input_dir: Path,
                   remove_originals: bool = True,
                   overwrite: bool = False,
                   verbose: bool = False
-                  ) -> Generator[Optional[Path], None, None]:
+                  ) -> Generator[Path, None, None]:
     fragmented_files = dict()
 
     input_dir = input_dir.resolve()

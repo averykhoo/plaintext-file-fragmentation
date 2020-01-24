@@ -57,13 +57,13 @@ if __name__ == '__main__':
         print(f'deleting temp archive <{archive_path}>')
         archive_path.unlink()
 
-        # create archive folder
+        # create folder in which to archive the entire input folder
         if not archive_folder.exists():
             print(f'archive folder <{archive_folder}> does not exist, creating...')
         archive_folder.mkdir(parents=True, exist_ok=True)
         assert archive_folder.is_dir()
 
-        # archive input folder
+        # archive input folder, then create new input folder
         source_folder.rename(archive_folder / f'input--{archive_date}')
         source_folder.mkdir(parents=True, exist_ok=True)
 

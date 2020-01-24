@@ -32,11 +32,8 @@ if __name__ == '__main__':
         # decode each bunch of fragments separately
         for temp_archive_path in restore_files(source_folder, password=password, verbose=True):
 
-            # did not decode
-            if temp_archive_path is None:
-                continue
             # unzip
-            print(f'restored to <{temp_archive_path}>, unpacking archive...')
+            print(f'restored to <{temp_archive_path}>, unpacking archive to <{output_folder}>...')
             with tarfile.open(temp_archive_path, mode='r:gz') as tf:
                 tf.extractall(path=output_folder)
 
