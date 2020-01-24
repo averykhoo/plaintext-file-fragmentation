@@ -8,7 +8,7 @@ from frag_utils import format_seconds
 
 this_folder = Path(__file__).parent
 source_folder: Path = this_folder / 'input'
-backup_folder: Path = this_folder / 'input_archive'
+archive_folder: Path = this_folder / 'input_archive'
 output_folder: Path = this_folder / 'ascii85_encoded'
 password = 'correct horse battery staple'  # https://xkcd.com/936/
 
@@ -18,12 +18,6 @@ if __name__ == '__main__':
         print(f'source folder <{source_folder}> does not exist, creating...')
     source_folder.mkdir(parents=True, exist_ok=True)
     assert source_folder.is_dir()
-
-    # create backup folder
-    if not backup_folder.exists():
-        print(f'source folder <{backup_folder}> does not exist, creating...')
-    backup_folder.mkdir(parents=True, exist_ok=True)
-    assert backup_folder.is_dir()
 
     # nothing to encode
     if len(list(source_folder.iterdir())) == 0:
@@ -63,8 +57,14 @@ if __name__ == '__main__':
         print(f'deleting temp archive <{archive_path}>')
         archive_path.unlink()
 
+        # create archive folder
+        if not archive_folder.exists():
+            print(f'archive folder <{archive_folder}> does not exist, creating...')
+        archive_folder.mkdir(parents=True, exist_ok=True)
+        assert archive_folder.is_dir()
+
         # archive input folder
-        source_folder.rename(backup_folder / f'input--{archive_date}')
+        source_folder.rename(archive_folder / f'input--{archive_date}')
         source_folder.mkdir(parents=True, exist_ok=True)
 
         print(f'created {len(fragment_paths)} fragments')
