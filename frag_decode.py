@@ -1,31 +1,32 @@
 import os
 import tarfile
 import time
+from pathlib import Path
 
 from frag_file import restore_files
+from frag_utils import format_seconds
 
-this_folder = os.path.abspath(os.path.dirname(__file__))
-source_folder = os.path.join(this_folder, r'ascii85_encoded')
-output_folder = os.path.join(this_folder, r'output_decoded')
+this_folder = Path(__file__).parent
+source_folder: Path = this_folder / 'ascii85_encoded'
+output_folder: Path = this_folder / 'output_decoded'
 password = 'correct horse battery staple'  # https://xkcd.com/936/
 
 if __name__ == '__main__':
     # create folder to place plaintext fragment files
-    if not os.path.isdir(source_folder):
-        assert not os.path.exists(source_folder)
-        os.makedirs(source_folder)
-        print('source folder <{}> does not exist, creating...'.format(source_folder))
+    if not source_folder.exists():
+        print(f'source folder <{source_folder}> does not exist, creating...')
+    source_folder.mkdir(parents=True, exist_ok=True)
+    assert source_folder.is_dir()
 
     # nothing to decode
-    if len(os.listdir(source_folder)) == 0:
-        print('nothing to decode, place files in <{}>'.format(source_folder))
+    if len(list(source_folder.iterdir())) == 0:
+        print(f'nothing to decode, place files in <{source_folder}>')
 
     # start decoding
     else:
-        if not os.path.isdir(output_folder):
-            assert not os.path.exists(output_folder)
-            os.makedirs(output_folder)
-            print('output folder <{}> does not exist, creating...'.format(output_folder))
+        # create output folder if needed
+        output_folder.mkdir(parents=True, exist_ok=True)
+        assert output_folder.is_dir()
 
         t = time.time()
 
@@ -36,16 +37,16 @@ if __name__ == '__main__':
             if temp_archive_path is None:
                 continue
             # unzip
-            print('restored to <{}>, unpacking archive...'.format(temp_archive_path))
+            print(f'restored to <{temp_archive_path}>, unpacking archive...')
             with tarfile.open(temp_archive_path, mode='r:gz') as tf:
                 tf.extractall(path=output_folder)
 
-            print('elapsed: {} seconds'.format(time.time() - t))
+            print(f'elapsed: {format_seconds(time.time() - t)}')
 
             # unpack and remove zip
-            print('unpacked <{}>, deleting archive...'.format(temp_archive_path))
-            os.remove(temp_archive_path)
+            print(f'unpacked <{temp_archive_path}>, deleting archive...')
+            temp_archive_path.unlink()
 
-            print('elapsed: {} seconds'.format(time.time() - t))
+            print(f'elapsed: {format_seconds(time.time() - t)}')
 
     print('done!')

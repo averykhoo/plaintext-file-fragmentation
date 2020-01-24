@@ -37,6 +37,9 @@
 3.  `certutil -decode -v b64.txt archive.zip`
 
 ##  todo:
--   use `pathlib`
+-   use `pathlib` in `frag_utils` and `frag_file`
+-   type annotations
+-   rename "password" to "passphrase"?
 -   backup inputs to the output folder instead?
 -   unified text fragment class for reading and writing?
+-   make `defragment_file` method?

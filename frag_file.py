@@ -4,62 +4,72 @@ fragment a file into multiple smaller ascii files
 import codecs
 import hashlib
 import json
-import os
 import random
 import time
 import warnings
+from os import urandom
+from pathlib import Path
+from typing import Generator
+from typing import List
+from typing import Optional
 
 from frag_rc4 import rc4
 from frag_utils import a85decode
 from frag_utils import a85encode
+from frag_utils import format_bytes
 from frag_utils import hash_content
 from frag_utils import hash_file
 from frag_utils import password_to_bytes
 
-MAGIC_STRING = 'text/fragment+a85+rc4+v2'  # follow mime type convention approximately because why not
+MAGIC_STRING = 'text/fragment+a85+rc4+ver3'  # follow mime type convention approximately because why not
 HASH_FUNCTION = 'sha1'  # or any of {'md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512'}
 
 
-def fragment_file(file_path, output_dir, password=None, max_size=22000000, size_range=4000000, verbose=False):
+def fragment_file(file_path: Path,
+                  output_dir: Path,
+                  password: Optional[str] = None,
+                  max_size: int = 22000000,
+                  size_range: int = 4000000,
+                  verbose: bool = False) -> List[Path]:
     """
     see TextFragment for details
     """
     # sanity checks
-    assert os.path.isfile(file_path), 'input file does not exist'
+    assert file_path.exists(), f'input file does not exist at {file_path}'
     assert 0 <= size_range < max_size
 
-    # allocate fragment sizes randomly
-    unallocated_bytes = os.path.getsize(file_path)
+    # allocate fragment sizes greedily and randomly
+    unallocated_bytes = file_path.stat().st_size
     fragment_sizes = []
     min_size = max_size - size_range
     while unallocated_bytes > max_size:
-        fragment_size = random.randint(min_size, max_size)
+        fragment_size = random.randint(min_size, max_size)  # min_size <= fragment_size <= max_size
         fragment_sizes.append(fragment_size)
         unallocated_bytes -= fragment_size
     if unallocated_bytes:
         fragment_sizes.append(unallocated_bytes)
-    assert sum(fragment_sizes) == os.path.getsize(file_path)
+    assert sum(fragment_sizes) == file_path.stat().st_size
+    random.shuffle(fragment_sizes)  # otherwise the smallest fragment is always at the end
 
     # get static values used in header info
-    file_name = os.path.basename(file_path)
+    file_name = file_path.name
     file_hash = hash_file(file_path, hash_func=HASH_FUNCTION)
-    file_size = os.path.getsize(file_path)
+    file_size = file_path.stat().st_size
     if verbose:
-        print('fragmentation target path is <{}>'.format(file_path))
-        print('fragmentation target hash is <{}>'.format(file_hash))
-        print('fragmentation target size is <{}>'.format(file_size))
-        print('creating {} fragments...'.format(len(fragment_sizes)))
+        print(f'fragmentation target path is <{file_path}>')
+        print(f'fragmentation target hash is {file_hash}')
+        print(f'fragmentation target size is {format_bytes(file_size)}')
+        print(f'creating {len(fragment_sizes)} fragments...')
 
     # create output folder
-    output_dir = os.path.abspath(output_dir)
-    if not os.path.isdir(output_dir):
-        assert not os.path.exists(output_dir)
-        os.makedirs(output_dir)
+    output_dir = output_dir.resolve()
+    output_dir.mkdir(parents=True, exist_ok=True)
+    assert output_dir.is_dir()
 
     # iterate through input file only once
     fragment_paths = []
-    with open(file_path, 'rb') as f_in:
-        for fragment_size in fragment_sizes:
+    with file_path.open('rb') as f_in:
+        for fragment_idx, fragment_size in enumerate(fragment_sizes):
             # get start byte
             fragment_start = f_in.tell()
 
@@ -69,23 +79,22 @@ def fragment_file(file_path, output_dir, password=None, max_size=22000000, size_
             # hash data
             fragment_hash = hash_content(fragment_raw, HASH_FUNCTION)
 
-            # encrypt data
-            if password is not None:
-                password_salt = os.urandom(256)
-                initialization_vector = os.urandom(16)
-                fragment_encrypted = rc4(password_to_bytes(password, salt=password_salt, max_len=256), fragment_raw,
-                                         initialization_vector=initialization_vector)
+            # always generate salt and IV
+            password_salt = urandom(256)  # match rc4 keylen = 256 bytes
+            initialization_vector = urandom(16)  # match rc4 IV len = 16 bytes
 
-            # don't encrypt data
+            # encrypt data if password was provided (even if password is an empty string)
+            if password is not None:
+                password_bytes = password_to_bytes(password, salt=password_salt, length=256)  # match rc4 keylen
+                fragment_encrypted = rc4(password_bytes, fragment_raw, initialization_vector=initialization_vector)
+
+            # don't encrypt data if password was not provided (salt and IV generated and saved but not used)
             else:
-                initialization_vector = b''
-                password_salt = b''
                 fragment_encrypted = fragment_raw
 
             if verbose:
-                print('fragment {} -> bytes {} through {}'.format(fragment_hash,
-                                                                  fragment_start,
-                                                                  fragment_start + fragment_size))
+                print(f'fragment [{fragment_idx + 1}/{len(fragment_sizes)}] {fragment_hash}'
+                      f' -> {format_bytes(fragment_size)} from byte {fragment_start}')
 
             # generate json header
             initialization_vector_hex = codecs.encode(initialization_vector, 'hex_codec').decode('ascii').upper()
@@ -101,22 +110,20 @@ def fragment_file(file_path, output_dir, password=None, max_size=22000000, size_
                                  }, separators=(',', ':'))
 
             # write fragment file
-            fragment_path = os.path.join(output_dir, fragment_hash + '.txt')
+            fragment_path = output_dir / f'{fragment_hash}.txt'
+            fragment_tmp_path = output_dir / f'{fragment_hash}.txt.tempfile'
             fragment_paths.append(fragment_path)
-            err = None
-            for _attempt in range(3):
-                try:
-                    with open(fragment_path + '.tempfile', mode='wt', encoding='ascii', newline='\n') as f_out:
-                        f_out.write(MAGIC_STRING + '\n')
-                        f_out.write(header + '\n')
-                        f_out.write(a85encode(fragment_encrypted).decode('ascii') + '\n')
-                    os.rename(fragment_path + '.tempfile', fragment_path)
-                    break
-                except Exception as err:
-                    if os.path.exists(fragment_path + '.tempfile'):
-                        os.remove(fragment_path + '.tempfile')
-            else:
-                raise err
+            try:
+                with fragment_tmp_path.open(mode='wt', encoding='ascii', newline='\n') as f_out:
+                    f_out.write(MAGIC_STRING + '\n')
+                    f_out.write(header + '\n')
+                    f_out.write(a85encode(fragment_encrypted).decode('ascii') + '\n')
+                fragment_tmp_path.rename(fragment_path)
+
+            except Exception:
+                if fragment_tmp_path.exists():
+                    fragment_tmp_path.unlink()
+                raise
 
         # make sure the entire file has been processed
         assert len(f_in.read()) == 0
@@ -142,28 +149,25 @@ class TextFragment:
         initialization_vector:  <initialization vector> (base64)
     """
 
-    def __init__(self, fragment_path, password=None):
-        """
-        :type fragment_path: str
-        """
+    def __init__(self, fragment_path: Path, password: Optional[str] = None):
         self.fragment_path = fragment_path
         self.password = password
 
         # verify magic string and read header
-        with open(fragment_path, mode='rt', encoding='ascii') as f:
+        with fragment_path.open(mode='rt', encoding='ascii') as f:
             assert f.readline().strip() == MAGIC_STRING
             header = json.loads(f.readline())
             self.content_pos = f.tell()
 
         # parse header
-        self.file_name = header['file_name'].encode('ascii').decode('idna')
-        self.file_hash = header['file_hash']
-        self.file_size = header['file_size']
-        self.fragment_start = header['fragment_start']
-        self.fragment_hash = header['fragment_hash']
-        self.fragment_size = header['fragment_size']
-        self.initialization_vector = codecs.decode(header['initialization_vector'].encode('ascii'), 'hex_codec')
-        self.password_salt = codecs.decode(header['password_salt'].encode('ascii'), 'hex_codec')
+        self.file_name: str = header['file_name'].encode('ascii').decode('idna')
+        self.file_hash: str = header['file_hash']
+        self.file_size: int = header['file_size']
+        self.fragment_start: int = header['fragment_start']
+        self.fragment_hash: str = header['fragment_hash']
+        self.fragment_size: int = header['fragment_size']
+        self.initialization_vector: bytes = codecs.decode(header['initialization_vector'].encode('ascii'), 'hex_codec')
+        self.password_salt: bytes = codecs.decode(header['password_salt'].encode('ascii'), 'hex_codec')
 
     def read(self, length=None):
         """
@@ -175,15 +179,17 @@ class TextFragment:
             length = self.fragment_size
         assert length <= self.fragment_size
 
-        with open(self.fragment_path, mode='rt', encoding='ascii') as f:
+        with self.fragment_path.open(mode='rt', encoding='ascii') as f:
             # read and decode content to bytes
             f.seek(self.content_pos)
             decoded_content = a85decode(f.readline().rstrip())
 
             # decrypt data
-            if self.password is not None and self.initialization_vector:
-                decrypted_content = rc4(password_to_bytes(self.password, salt=self.password_salt, max_len=256),
-                                        decoded_content, initialization_vector=self.initialization_vector)
+            if self.password is not None:
+                password_bytes = password_to_bytes(self.password, salt=self.password_salt, length=256)
+                decrypted_content = rc4(password_bytes, decoded_content,
+                                        initialization_vector=self.initialization_vector)
+
             else:
                 decrypted_content = decoded_content
 
@@ -203,18 +209,18 @@ class TextFragment:
         """
         err = None
         for retry in range(3):
-            if os.path.exists(self.fragment_path):
+            if self.fragment_path.exists():
                 if retry:
-                    print('retrying file deletion for <{}>...'.format(self.fragment_path))
+                    print(f'retrying file deletion for <{self.fragment_path}>...')
                     time.sleep(1)
                 try:
-                    os.remove(self.fragment_path)
+                    self.fragment_path.unlink()
                 except PermissionError as e:
-                    err = '[Windows Error] {}: {}'.format(e.args[1], repr(e.filename))
+                    err = f'[Windows Error] {e.args[1]}: {repr(e.filename)}'
                 except FileNotFoundError:
                     pass
-        if os.path.exists(self.fragment_path):
-            warnings.warn('unable to delete fragment at path {}'.format(self.fragment_path))
+        if self.fragment_path.exists():
+            warnings.warn(f'unable to delete fragment at path {self.fragment_path}')
             warnings.warn(err)
 
 
@@ -273,7 +279,7 @@ class FragmentedFile:
             # if progress can't be made, then fragments are missing
             if not candidates:
                 self.extraction_plan = None
-                print('file {} is missing a fragment starting at byte {}'.format(self.file_hash, curr_byte))
+                print(f'file {self.file_hash} is missing a fragment starting at byte {curr_byte}')
                 return None
 
             #
@@ -301,35 +307,37 @@ class FragmentedFile:
             for _, text_fragment in fragment_set:
                 text_fragment.remove()
 
-    def make_file(self, output_dir, file_name=None, remove_originals=True, overwrite=False, verbose=False):
+    def make_file(self, output_dir: Path,
+                  file_name: Optional[str] = None,
+                  remove_originals: bool = True,
+                  overwrite: bool = False,
+                  verbose: bool = False
+                  ) -> Optional[Path]:
+
         # which fragment_set to make from
         extraction_plan = self.get_extraction_plan()
         assert extraction_plan is not None
 
         if verbose:
-            print('restoring {} bytes from {} fragments of {}'.format(self.file_size,
-                                                                      len(extraction_plan),
-                                                                      self.file_name))
+            print(f'restoring {format_bytes(self.file_size)} from {len(extraction_plan)} fragments of {self.file_name}')
             unused = sum(len(fragments) for fragments in self.fragments.values()) - len(extraction_plan)
             if unused and remove_originals:
-                print('{} extra fragment(s) will also be deleted'.format(unused))
+                print(f'{unused} extra fragment(s) will also be deleted')
 
         # where output file will be written
         if file_name is None:
             file_name = self.file_name
-        file_path = os.path.abspath(os.path.join(output_dir, file_name))
+        file_path = output_dir / file_name
 
         # make parent dir (not based on output_dir because file_name can contain subdir info)
-        parent_dir = os.path.dirname(file_path)
-        if not os.path.isdir(parent_dir):
-            assert not os.path.exists(parent_dir)
-            os.makedirs(parent_dir)
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        assert file_path.parent.is_dir()
 
         # check if already extracted to avoid overwrite
-        if os.path.exists(file_path):
+        if file_path.exists():
             if hash_file(file_path, hash_func=HASH_FUNCTION) == self.file_hash:
                 if verbose:
-                    print('file already successfully extracted and exists at output path')
+                    print('file already extracted successfully, exists at output path')
                 if remove_originals:
                     self.remove()
                 return file_path
@@ -337,23 +345,23 @@ class FragmentedFile:
             if not overwrite:
                 if verbose:
                     print('non-matching file already exists at output path, skipping')
-                warnings.warn('file already exists: {}'.format(file_path))
+                warnings.warn(f'file already exists: {file_path}')
                 return None
 
         # start extraction
-        temp_path = file_path + '.partial'
+        temp_path = file_path.with_suffix(file_path.suffix + '.partial')
         try:
-            with open(temp_path, 'wb') as f:
+            with temp_path.open('wb') as f:
                 # init full content hash
                 hash_obj = getattr(hashlib, HASH_FUNCTION)()
 
                 # write all fragments in order and update full content hash
-                for required_length, text_fragment in extraction_plan:
+                for fragment_idx, (required_length, text_fragment) in enumerate(extraction_plan):
                     if verbose:
-                        print('restoring from {} -> bytes {} through {}'
-                              .format(text_fragment.fragment_hash,
-                                      text_fragment.fragment_start + 1,
-                                      text_fragment.fragment_start + text_fragment.fragment_size))
+                        print(f'reading fragment [{fragment_idx + 1}/{len(extraction_plan)}]'
+                              f' {text_fragment.fragment_hash}'
+                              f' -> {format_bytes(text_fragment.fragment_size)}'
+                              f' from byte {text_fragment.fragment_start}')
 
                     assert f.tell() == text_fragment.fragment_start
                     content = text_fragment.read(required_length)
@@ -363,12 +371,12 @@ class FragmentedFile:
                 # make sure full and correct file contents have been written to disk
                 assert f.tell() == self.file_size
                 assert self.file_hash == hash_obj.hexdigest().upper()
-            os.rename(temp_path, file_path)
+            temp_path.rename(file_path)
 
         # if something failed, delete partial file
         except Exception:
-            if os.path.exists(temp_path):
-                os.remove(temp_path)
+            if temp_path.exists():
+                temp_path.unlink()
             raise
 
         # erase originals (unless otherwise specified) and return
@@ -377,13 +385,23 @@ class FragmentedFile:
         return file_path
 
 
-def restore_files(input_dir, password=None, file_name=None, remove_originals=True, overwrite=False, verbose=False):
+def restore_files(input_dir: Path,
+                  password: Optional[str] = None,
+                  file_name: Optional[str] = None,
+                  remove_originals: bool = True,
+                  overwrite: bool = False,
+                  verbose: bool = False
+                  ) -> Generator[Optional[Path], None, None]:
     fragmented_files = dict()
 
-    for txt_name in os.listdir(input_dir):
-        if not txt_name.endswith('.txt'):
+    input_dir = input_dir.resolve()
+    for txt_path in input_dir.glob('*'):
+        if not txt_path.is_file():
             continue
-        text_fragment = TextFragment(os.path.join(input_dir, txt_name), password=password)
+        with txt_path.open('rt') as f:
+            if f.read(len(MAGIC_STRING)) != MAGIC_STRING:
+                continue
+        text_fragment = TextFragment(txt_path, password=password)
         fragmented_files.setdefault(text_fragment.file_hash, FragmentedFile(text_fragment)).add(text_fragment)
 
     for file_hash, file_fragments in fragmented_files.items():
@@ -394,12 +412,17 @@ def restore_files(input_dir, password=None, file_name=None, remove_originals=Tru
                                                 remove_originals=remove_originals,
                                                 overwrite=overwrite,
                                                 verbose=verbose)
-            if verbose and out_path is not None:
-                print('saved {} to path: {}'.format(file_hash, out_path))
-            elif verbose:
-                print('skipped restoration of {}'.format(file_hash))
 
-            yield out_path
+            if out_path is not None:
+                if verbose:
+                    print(f'saved {file_hash} to path: {out_path}')
+                yield out_path
+
+            else:
+                if verbose:
+                    print(f'skipped restoration of {file_hash}')
+                else:
+                    warnings.warn(f'skipped restoration of {file_hash}')
 
         elif verbose:
-            print('incomplete file: {} with name {}'.format(file_hash, file_fragments.file_name))
+            print(f'incomplete file: {file_hash} with name {file_fragments.file_name}')

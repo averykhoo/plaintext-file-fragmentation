@@ -1,73 +1,73 @@
 import datetime
-import os
 import tarfile
 import time
+from pathlib import Path
 
 from frag_file import fragment_file
+from frag_utils import format_seconds
 
-this_folder = os.path.abspath(os.path.dirname(__file__))
-source_folder = os.path.join(this_folder, r'input')
-backup_folder = os.path.join(this_folder, r'input_archive')
-output_folder = os.path.join(this_folder, r'ascii85_encoded')
+this_folder = Path(__file__).parent
+source_folder: Path = this_folder / 'input'
+backup_folder: Path = this_folder / 'input_archive'
+output_folder: Path = this_folder / 'ascii85_encoded'
 password = 'correct horse battery staple'  # https://xkcd.com/936/
 
 if __name__ == '__main__':
     # create folder to place input files and folders
-    if not os.path.isdir(source_folder):
-        assert not os.path.exists(source_folder)
-        os.makedirs(source_folder)
-        print('source folder <{}> does not exist, creating...'.format(source_folder))
+    if not source_folder.exists():
+        print(f'source folder <{source_folder}> does not exist, creating...')
+    source_folder.mkdir(parents=True, exist_ok=True)
+    assert source_folder.is_dir()
 
     # create backup folder
-    if not os.path.isdir(backup_folder):
-        assert not os.path.exists(backup_folder)
-        os.makedirs(backup_folder)
-        print('backup folder <{}> does not exist, creating...'.format(backup_folder))
+    if not backup_folder.exists():
+        print(f'source folder <{backup_folder}> does not exist, creating...')
+    backup_folder.mkdir(parents=True, exist_ok=True)
+    assert backup_folder.is_dir()
 
     # nothing to encode
-    if len(os.listdir(source_folder)) == 0:
-        print('nothing to encode, place files in <{}>'.format(source_folder))
+    if len(list(source_folder.iterdir())) == 0:
+        print(f'nothing to encode, place files in <{source_folder}>')
 
     # start encoding everything
     else:
-        if not os.path.isdir(output_folder):
-            assert not os.path.exists(output_folder)
-            os.makedirs(output_folder)
-            print('output folder <{}> does not exist, creating...'.format(output_folder))
+        # create output folder if needed
+        output_folder.mkdir(parents=True, exist_ok=True)
+        assert output_folder.is_dir()
 
         # what to name the archive
-        archive_name = datetime.datetime.now().strftime('%Y-%m-%d--%H-%M-%S')
-        archive_path = os.path.abspath(os.path.join(output_folder, archive_name + '.tar.gz'))
+        archive_date = datetime.datetime.now().strftime('%Y-%m-%d--%H-%M-%S')
+        archive_path = output_folder / f'{archive_date}.tar.gz'
 
         # should never clash since we're using datetime
-        if os.path.exists(archive_path):
-            print('<{}> already exists, will remove...'.format(archive_path))
-            os.remove(archive_path)
+        if archive_path.exists():
+            print(f'<{archive_path}> already exists, will remove...')
+            archive_path.unlink()
 
         t = time.time()
 
         # archive everything into a gzip file
-        print('temporarily archiving <{}> to <{}>'.format(source_folder, archive_path))
+        print(f'temporarily archiving <{source_folder}> to <{archive_path}>')
         with tarfile.open(archive_path, mode='w:gz') as tf:
-            tf.add(source_folder, arcname=archive_name)
+            tf.add(source_folder, arcname=str(archive_date))
 
-        print('elapsed: {} seconds'.format(time.time() - t))
+        print(f'elapsed: {format_seconds(time.time() - t)} ')
 
         # plaintext fragmentation (size determined by defaults)
-        print('fragmenting <{}> to <{}>'.format(archive_path, output_folder))
+        print(f'fragmenting <{archive_path}> to <{output_folder}>')
         fragment_paths = fragment_file(archive_path, output_folder, password=password, verbose=True)
 
-        print('elapsed: {} seconds'.format(time.time() - t))
+        print(f'elapsed: {format_seconds(time.time() - t)}')
 
-        # remove gzip file, archive input folder
-        print('deleting temp archive <{}>'.format(archive_path))
-        os.remove(archive_path)
-        os.rename(source_folder, backup_folder + '/input--' + archive_name)
+        # remove gzip file
+        print(f'deleting temp archive <{archive_path}>')
+        archive_path.unlink()
 
-        os.makedirs(source_folder)
+        # archive input folder
+        source_folder.rename(backup_folder / f'input--{archive_date}')
+        source_folder.mkdir(parents=True, exist_ok=True)
 
-        print('created {} fragments'.format(len(fragment_paths)))
-
-        print('elapsed: {} seconds'.format(time.time() - t))
+        print(f'created {len(fragment_paths)} fragments')
+        print(f'elapsed: {format_seconds(time.time() - t)}')
 
     print('done!')
