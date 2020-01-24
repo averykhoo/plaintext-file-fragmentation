@@ -45,4 +45,3 @@
 -   encrypt original file name?
 -   backup inputs to the output folder instead?
 -   unified text fragment class for reading and writing?
--   make `defragment_file` method?

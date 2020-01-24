@@ -31,7 +31,7 @@ if __name__ == '__main__':
 
         # what to name the archive
         archive_date = datetime.datetime.now().strftime('%Y-%m-%d--%H-%M-%S')
-        archive_path = output_folder / f'{archive_date}.tar.gz'
+        archive_path = output_folder / f'{archive_date}.tgz'
 
         # should never clash since we're using datetime
         if archive_path.exists():

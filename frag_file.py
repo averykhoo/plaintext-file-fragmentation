@@ -386,13 +386,13 @@ class FragmentedFile:
         return file_path
 
 
-def restore_files(input_dir: Path,
-                  password: Optional[str] = None,
-                  file_name: Optional[str] = None,
-                  remove_originals: bool = True,
-                  overwrite: bool = False,
-                  verbose: bool = False
-                  ) -> Generator[Path, None, None]:
+def defragment_files(input_dir: Path,
+                     password: Optional[str] = None,
+                     file_name: Optional[str] = None,
+                     remove_originals: bool = True,
+                     overwrite: bool = False,
+                     verbose: bool = False
+                     ) -> Generator[Path, None, None]:
     fragmented_files = dict()
 
     input_dir = input_dir.resolve()

@@ -2,7 +2,7 @@ import tarfile
 import time
 from pathlib import Path
 
-from frag_file import restore_files
+from frag_file import defragment_files
 from frag_utils import format_seconds
 
 this_folder = Path(__file__).parent
@@ -30,7 +30,7 @@ if __name__ == '__main__':
         t = time.time()
 
         # decode each bunch of fragments separately
-        for temp_archive_path in restore_files(source_folder, password=password, verbose=True):
+        for temp_archive_path in defragment_files(source_folder, password=password, verbose=True):
 
             # unzip
             print(f'restored to <{temp_archive_path}>, unpacking archive to <{output_folder}>...')
