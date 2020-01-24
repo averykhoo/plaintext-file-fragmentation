@@ -2,17 +2,16 @@ from typing import List
 from typing import Union
 
 
-def rc4(key: Union[str, bytes, bytearray],
-        input_bytes: Union[bytes, bytearray],
-        initialization_vector: Union[bytes, bytearray] = b'',
-        ) -> bytearray:
+def rc4(input_bytes: Union[bytes, bytearray],
+        key: Union[str, bytes, bytearray],
+        initialization_vector: Union[bytes, bytearray] = b'') -> bytearray:
     """
     single-function RC4-drop stream encryption
     uses IV to determine how much of keystream to skip
     e.g. to mimic RC4-drop-768, set IV to b'\xFE\x02'
 
-    :param key: 1 to 256 bytes (remainder will be ignored)
     :param input_bytes: data to encrypt / decrypt
+    :param key: 1 to 256 bytes (remainder will be ignored)
     :param initialization_vector: 1 to 16 bytes (remainder will be ignored)
     :return: encoded bytes
     """

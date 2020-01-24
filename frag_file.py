@@ -87,7 +87,7 @@ def fragment_file(file_path: Path,
             # encrypt data if password was provided (even if password is an empty string)
             if password is not None:
                 password_bytes = password_to_bytes(password, salt=password_salt, length=256)  # match rc4 keylen
-                fragment_encrypted = rc4(password_bytes, fragment_raw, initialization_vector=initialization_vector)
+                fragment_encrypted = rc4(fragment_raw, password_bytes, initialization_vector=initialization_vector)
 
             # don't encrypt data if password was not provided (salt and IV generated and saved but not used)
             else:
@@ -183,46 +183,40 @@ class TextFragment:
         with self.fragment_path.open(mode='rt', encoding='ascii') as f:
             # read and decode content to bytes
             f.seek(self.content_pos)
-            decoded_content = a85decode(f.readline().rstrip())
-
-            # decrypt data
-            if self.password is not None:
-                password_bytes = password_to_bytes(self.password, salt=self.password_salt, length=256)
-                decrypted_content = rc4(password_bytes, decoded_content,
-                                        initialization_vector=self.initialization_vector)
-
-            else:
-                decrypted_content = decoded_content
+            content = a85decode(f.readline().rstrip())
 
             # nothing left behind
             assert not f.read().strip()
 
-            # verify content
-            assert self.fragment_size == len(decrypted_content)
-            assert self.fragment_hash == hash_content(decrypted_content, hash_func=HASH_FUNCTION)
+        # decrypt data
+        if self.password is not None:
+            password_bytes = password_to_bytes(self.password, salt=self.password_salt, length=256)
+            content = rc4(content, password_bytes, initialization_vector=self.initialization_vector)
 
-            # return as many bytes as requested
-            return decrypted_content[:length]
+        # verify content
+        assert self.fragment_size == len(content)
+        assert self.fragment_hash == hash_content(content, hash_func=HASH_FUNCTION)
 
-    def remove(self):
+        # return as many bytes as requested
+        return content[:length]
+
+    def unlink(self):
         """
         delete source file
         """
-        err = None
         for retry in range(3):
             if self.fragment_path.exists():
                 if retry:
                     print(f'retrying file deletion for <{self.fragment_path}>...')
-                    time.sleep(1)
+                    time.sleep(retry)
                 try:
                     self.fragment_path.unlink()
                 except PermissionError as e:
-                    err = f'[Windows Error] {e.args[1]}: {repr(e.filename)}'
+                    warnings.warn(f'[Permission Error] {e.args[1]}: {repr(e.filename)}')
                 except FileNotFoundError:
                     pass
         if self.fragment_path.exists():
             warnings.warn(f'unable to delete fragment at path {self.fragment_path}')
-            warnings.warn(err)
 
 
 class FragmentedFile:
@@ -306,7 +300,7 @@ class FragmentedFile:
         """
         for fragment_set in self.fragments.values():
             for _, text_fragment in fragment_set:
-                text_fragment.remove()
+                text_fragment.unlink()
 
     def make_file(self, output_dir: Path,
                   file_name: Optional[str] = None,
