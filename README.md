@@ -4,42 +4,45 @@
 -   breaks a file or folder into a bunch of ascii plaintext files
 
 ##  requirements
--   python 3
+-   python 3.6
 
 ##  usage
--   put files/dirs in input folder (`input`)
--   run encode *(about 1 min per 100 MB)*
--   transfer text files to other place (`ascii85_encoded`)
--   run decode *(about 1.5 min per 100 MB)*
--   take files out (`output_decoded`)
+### on the first PC
+-   (if **input** folder does not exist) run `encode.bat` to create **input** folder
+-   copy files or directories into **input** folder
+-   run `encode.bat` *(about 1 min per 100 MB)*
+-   your files will be archived to **input_archive**
+-   transfer text files in **ascii85_encoded** to the other pc
+
+### on the second PC
+-   (if **ascii85_encoded** folder does not exist) run `decode.bat` to create **ascii85_encoded** folder
+-   move text files to `ascii85_encoded`
+-   run `decode.bat` *(about 1.5 min per 100 MB)*
+-   take files out from **output_decoded**
 
 ##  how it works
 ### `frag_encode.py`
-1.  tar and gzip to binary file on disk
-2.  break file into random-sized chunks 
-3.  encrypt each chunk separately using the rc4-drop stream cipher (this might be bad practice?)
+1.  tar and gzip input folder to .tgz file on disk
+2.  break file into random-sized chunks
+3.  encrypt each chunk separately using the rc4-drop stream cipher (randomize salt and IV per-file)
 4.  a85 encode each encrypted chunk
 5.  write each encoded chunk to a text file (with metadata as json in header line)
-6.  backup original input files to a timestamped folder 
+6.  backup original input files to a timestamped folder
 
 ### `frag_decode.py`
 1.  the above steps in reverse
 2.  allows you to decode multiple sets of chunks in one go
 3.  decoded files are in a folder named according to the datetime you encoded it
 
-##  to-do
--   setup logging, or provide receipts when zipping/unzipping?
--   encrypt original file name?
-
 ##  manual alternative
 1.  zip your file (right-click > send to > compressed folder)
 2.  `certutil -encode -v archive.zip b64.txt`
-3.  `certutil -decode -v b64.txt archive.zip`
+3.  transfer **b64.txt** to your other PC
+4.  `certutil -decode -v b64.txt archive.zip`
 
 ##  todo:
--   use `pathlib` in `frag_utils` and `frag_file`
--   type annotations
--   rename "password" to "passphrase"?
+-   setup logging, or provide receipts when zipping/unzipping?
+-   encrypt original file name?
 -   backup inputs to the output folder instead?
 -   unified text fragment class for reading and writing?
 -   make `defragment_file` method?
