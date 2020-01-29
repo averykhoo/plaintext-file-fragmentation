@@ -138,7 +138,8 @@ def password_to_bytes(password_string: str,
     password_chunks: List[bytes] = []
 
     while password_length < length:
-        chunk = hashlib.sha3_512(salt + bytes(str(password_length), 'ascii') + password_string.encode('utf8')).digest()
+        pepper = bytes(str(password_length), 'ascii')  # very bad pepper but meh it's RC4 anyway
+        chunk = hashlib.sha3_512(password_string.encode('utf8') + pepper + salt).digest()
         password_length += len(chunk)
         password_chunks.append(chunk)
 

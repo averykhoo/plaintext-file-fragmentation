@@ -37,25 +37,28 @@ def fragment_file(file_path: Path,
     """
     # sanity checks
     assert file_path.exists(), f'input file does not exist at {file_path}'
-    assert 0 <= size_range < max_size
+    assert 0 <= size_range < max_size, f'size_range ({size_range}) must be less than max_size ({max_size})'
+
+    # make sure it's an int so `random.randint` doesn't break
+    max_size = int(max_size)
+    min_size = int(max_size - size_range)
 
     # allocate fragment sizes greedily and randomly
-    unallocated_bytes = file_path.stat().st_size
+    file_size = file_path.stat().st_size
+    unallocated_bytes = file_size
     fragment_sizes = []
-    min_size = max_size - size_range
     while unallocated_bytes > max_size:
         fragment_size = random.randint(min_size, max_size)  # min_size <= fragment_size <= max_size
         fragment_sizes.append(fragment_size)
         unallocated_bytes -= fragment_size
     if unallocated_bytes:
         fragment_sizes.append(unallocated_bytes)
-    assert sum(fragment_sizes) == file_path.stat().st_size
+    assert sum(fragment_sizes) == file_size
     random.shuffle(fragment_sizes)  # otherwise the smallest fragment is always at the end
 
     # get static values used in header info
     file_name = file_path.name
     file_hash = hash_file(file_path, hash_func=HASH_FUNCTION)
-    file_size = file_path.stat().st_size
     if verbose:
         print(f'fragmentation target path is <{file_path}>')
         print(f'fragmentation target hash is {file_hash}')
@@ -69,6 +72,8 @@ def fragment_file(file_path: Path,
 
     # iterate through input file only once
     fragment_paths = []
+    seen_password_salts = {None}
+    seen_initialization_vectors = {None}
     with file_path.open('rb') as f_in:
         for fragment_idx, fragment_size in enumerate(fragment_sizes):
             # get start byte
@@ -76,13 +81,20 @@ def fragment_file(file_path: Path,
 
             # read raw data
             fragment_raw = f_in.read(fragment_size)
+            assert len(fragment_raw) == fragment_size, f'could not read file, may have been modified'
 
             # hash data
             fragment_hash = hash_content(fragment_raw, HASH_FUNCTION)
 
-            # always generate salt and IV
-            password_salt = urandom(256)  # match rc4 keylen = 256 bytes
-            initialization_vector = urandom(16)  # match rc4 IV len = 16 bytes
+            # generate random unique salt
+            password_salt = None
+            while password_salt in seen_password_salts:
+                password_salt = urandom(256)  # match rc4 keylen = 256 bytes
+
+            # generate random unique initialization vector
+            initialization_vector = None
+            while initialization_vector in seen_initialization_vectors:
+                initialization_vector = urandom(16)  # match rc4 IV len = 16 bytes
 
             # encrypt data if password was provided (even if password is an empty string)
             if password is not None:
@@ -127,7 +139,7 @@ def fragment_file(file_path: Path,
                 raise
 
         # make sure the entire file has been processed
-        assert len(f_in.read()) == 0
+        assert len(f_in.read()) == 0, f'file may have been modified during processing!'
 
     # return ordered list of fragment file paths
     return fragment_paths
