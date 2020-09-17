@@ -19,9 +19,9 @@ from frag_rc4 import rc4
 from frag_utils import format_bytes
 from frag_utils import hash_content
 from frag_utils import hash_file
-from frag_utils import password_to_bytes
+from frag_utils import key_derivation_function
 
-MAGIC_STRING = 'text/fragment+a85+rc4+ver3'  # follow mime type convention approximately because why not
+MAGIC_STRING = 'text/fragment+a85+rc4+ver4'  # follow mime type convention approximately because why not
 HASH_FUNCTION = 'sha1'  # or any of {'md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512'}
 
 
@@ -89,7 +89,7 @@ def fragment_file(file_path: Path,
             # generate random unique salt
             password_salt = None
             while password_salt in seen_password_salts:
-                password_salt = urandom(256)  # match rc4 keylen = 256 bytes
+                password_salt = urandom(512)  # minimum length = 256 bytes (match rc4 keylen)
 
             # generate random unique initialization vector
             initialization_vector = None
@@ -98,7 +98,8 @@ def fragment_file(file_path: Path,
 
             # encrypt data if password was provided (even if password is an empty string)
             if password is not None:
-                password_bytes = password_to_bytes(password, salt=password_salt, length=256)  # match rc4 keylen
+                # rc4 takes at most 256 bytes as an encryption key
+                password_bytes = key_derivation_function(password, salt=password_salt, length=256)
                 fragment_encrypted = rc4(fragment_raw, password_bytes, initialization_vector=initialization_vector)
 
             # don't encrypt data if password was not provided (salt and IV generated and saved but not used)
@@ -202,7 +203,7 @@ class TextFragment:
 
         # decrypt data
         if self.password is not None:
-            password_bytes = password_to_bytes(self.password, salt=self.password_salt, length=256)
+            password_bytes = key_derivation_function(self.password, salt=self.password_salt, length=256)
             content = rc4(content, password_bytes, initialization_vector=self.initialization_vector)
 
         # verify content

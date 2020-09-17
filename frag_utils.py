@@ -1,10 +1,23 @@
 import hashlib
+import hmac
 import math
 import os
 import warnings
 from pathlib import PurePath
-from typing import List
 from typing import Union
+
+PEPPER = b'''Lr>=9ObAWplJB^>#g<QAK$,<+O'bK;UU:Eim%3S01WZdV4_5g-6Mao_EOS>3W,V7''' + \
+         b'''?Wqm[#)[Tn52B8s-&I1N'E[C3Q[pB2(FnJ/8rEGQ1OEojE!&L**HH.$EqChdhJUZ''' + \
+         b'''a"Ki]5P+M/4>'-F7dXX&M7qJ^GI7r3pt/2&_&uULVL=PZ3*?Mdir`5YZbrW`4hIJ''' + \
+         b''''8P%!7I)1Pq6[CEog'C<(>kP:*52D!@-%I#`Ztj*dki19Ck(n(_Ca4O8URVGEr0@''' + \
+         b'''hHZ"2ZY$qJ;I2Ta^Jm1^eq3Br$A6btq=OmQAA7ip?aa<N6K1J;<dl1h&5Q"6j-TE''' + \
+         b'''B77#$jb'*STXgiSq"7^"O5;RL7aHpoNOW$0hSaoZLhq<M/)k:=Z,S",8CY(i?964''' + \
+         b'''S]-[[dCI@8n)ntRdXY*WB]_.qLJVF_sQUIlR'Eb2%9`]:Mfi%aRjF=R9*`kmm>M5''' + \
+         b'''"40&=a.CaR.S&IRbkQMDl32!l97:`G)Y/4nn$&KBK?A/`YKD),QOYUVhmE6OQ'rI''' + \
+         b'''?^IioYnmp=_so!_k>X!Y/HI&()9$DWQ/%8ghW.3"*FOPfX:7?@?gDBrli]1Q,Ks4''' + \
+         b'''Bd28;*f3-"UdUS<r8L-<LCO*M=f_pHp7Z7[R&e^,e1DnD4=s'X4C3_OuW1e'Wba]''' + \
+         b'''YtfljY&:CfD.E`q)^s4^E$?a>qhcZW`d6]n)KhHQjLQFFAYuFGl%Ios.oQbJoEBa''' + \
+         b'''##Qh"?1FBV3gMEE<Ce`T/]QEjqZ)'N'A6!=(.>b^>3T-jjli+(QC?42@FmVAG)%<'''  # 768 almost-random bytes
 
 
 def format_bytes(num_bytes: Union[float, int]) -> str:
@@ -123,24 +136,20 @@ def hash_content(content: Union[bytes, bytearray],
     return hash_obj.hexdigest().upper()
 
 
-def password_to_bytes(password_string: str,
-                      salt: Union[bytes, bytearray] = b'sodium--chloride' * 32,
-                      length: int = 512
-                      ) -> bytes:
-    assert isinstance(password_string, str)
-    assert 1 <= length < 1024 * 1024
+def key_derivation_function(password_string: Union[str, bytes, bytearray],
+                            salt: Union[bytes, bytearray] = b'',
+                            length: int = 512
+                            ) -> bytes:
+    assert 1 <= length <= 1024 * 1024
 
+    # warn if salt is too short, see: https://crackstation.net/hashing-security.htm#salt
     if len(salt) < length:
-        # https://crackstation.net/hashing-security.htm#salt
         warnings.warn(f'salt too short, should be as long as your output ({length} bytes)')
 
-    password_length = 0
-    password_chunks: List[bytes] = []
+    # combine pepper and password
+    if isinstance(password_string, str):
+        key_bytes = hmac.digest(PEPPER, password_string.encode('utf8'), digest='sha3_512')
+    else:
+        key_bytes = hmac.digest(PEPPER, password_string, digest='sha3_512')
 
-    while password_length < length:
-        pepper = bytes(str(password_length), 'ascii')  # very bad pepper but meh it's RC4 anyway
-        chunk = hashlib.sha3_512(password_string.encode('utf8') + pepper + salt).digest()
-        password_length += len(chunk)
-        password_chunks.append(chunk)
-
-    return b''.join(password_chunks)[:length]
+    return hashlib.scrypt(key_bytes, salt=salt + PEPPER, n=16384, r=32, p=1, dklen=length, maxmem=80 * 1024 * 1024)
