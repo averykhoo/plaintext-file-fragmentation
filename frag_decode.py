@@ -8,7 +8,7 @@ from frag_utils import format_seconds
 this_folder = Path(__file__).parent
 source_folder: Path = this_folder / 'ascii85_encoded'
 output_folder: Path = this_folder / 'output_decoded'
-password = 'correct horse battery staple'  # https://xkcd.com/936/
+password = 'correct 🐎 🔋 staple'  # https://xkcd.com/936/
 
 if __name__ == '__main__':
     # create folder to place plaintext fragment files

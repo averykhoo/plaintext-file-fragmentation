@@ -10,7 +10,7 @@ this_folder = Path(__file__).parent
 source_folder: Path = this_folder / 'input'
 archive_folder: Path = this_folder / 'input_archive'
 output_folder: Path = this_folder / 'ascii85_encoded'
-password = 'correct horse battery staple'  # https://xkcd.com/936/
+password = 'correct 🐎 🔋 staple'  # https://xkcd.com/936/
 
 if __name__ == '__main__':
     # create folder to place input files and folders
