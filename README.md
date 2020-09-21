@@ -41,7 +41,11 @@
 4.  `certutil -decode -v b64.txt archive.zip`
 
 ##  todo:
+-   better encryption than rc4, but not too slow
+    -   mitigating factors:
+        -   we're using rc4-drop
+        -   the key is effectively random
+        -   the key is the full 256 bytes long
+        -   the stream is limited to less than 2**25 bytes
 -   setup logging, or provide receipts when zipping/unzipping?
--   encrypt original file name?
--   backup inputs to the output folder instead?
 -   unified text fragment class for reading and writing?
