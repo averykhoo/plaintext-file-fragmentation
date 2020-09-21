@@ -73,7 +73,7 @@ def fragment_file(file_path: Path,
     # iterate through input file only once
     fragment_paths = []
     seen_password_salts = {None}
-    seen_initialization_vectors = {None}
+    seen_initialization_vectors = {None, b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'}
     with file_path.open('rb') as f_in:
         for fragment_idx, fragment_size in enumerate(fragment_sizes):
             # get start byte
