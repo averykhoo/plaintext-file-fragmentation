@@ -148,8 +148,8 @@ def key_derivation_function(password_string: Union[str, bytes, bytearray],
 
     # combine pepper and password
     if isinstance(password_string, str):
-        key_bytes = hmac.digest(PEPPER, password_string.encode('utf8'), digest='sha3_512')
+        key_bytes = hmac.digest(PEPPER, password_string.encode('utf8'), digest=hashlib.sha3_512)
     else:
-        key_bytes = hmac.digest(PEPPER, password_string, digest='sha3_512')
+        key_bytes = hmac.digest(PEPPER, password_string, digest=hashlib.sha3_512)
 
     return hashlib.scrypt(key_bytes, salt=salt + PEPPER, n=16384, r=32, p=1, dklen=length, maxmem=80 * 1024 * 1024)
