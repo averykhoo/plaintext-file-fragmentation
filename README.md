@@ -43,7 +43,7 @@
 ##  todo:
 -   better encryption than rc4, but not too slow
     -   maybe [chacha](https://github.com/pts/chacha20/blob/master/chacha20_python3.py)
-        -   check if it succeeds on the [test vectors](https://github.com/pts/chacha20/blob/master/chacha20_python3.py)
+        -   check if it succeeds on the [test vectors](https://crypto.stackexchange.com/questions/22338/where-are-the-chacha20-test-vectors-examples)
     -   mitigating factors:
         -   we're using rc4-drop
         -   the key is effectively random
