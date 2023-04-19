@@ -1,7 +1,9 @@
 #   plaintext file fragmentation
 
-##  what
--   breaks a file or folder into a bunch of ascii plaintext files
+##  what and why
+-   converts a file or folder into a bunch of ascii plaintext files, and vice versa
+-   lets you bypass restrictions on file types
+-   note that you may get in trouble for bypassing restrictions and that's entirely on you
 
 ##  requirements
 -   python 3.6
@@ -24,7 +26,7 @@
 ### `frag_encode.py`
 1.  tar and gzip input folder to .tgz file on disk
 2.  break file into random-sized chunks
-3.  encrypt each chunk separately using the rc4-drop stream cipher (randomize salt and IV per-file)
+3.  encrypt each chunk separately using the rc4-drop stream cipher (randomized salt and IV per-file)
 4.  a85 encode each encrypted chunk
 5.  write each encoded chunk to a text file (with metadata as json in header line)
 6.  backup original input files to a timestamped folder
@@ -42,6 +44,7 @@
 
 ##  todo:
 -   better encryption than rc4, but not too slow
+    -   so i'm currently using rc4 because it's easy to implement in pure python, reasonably fast, and there aren't any stream ciphers in the builtins
     -   maybe [chacha](https://github.com/pts/chacha20/blob/master/chacha20_python3.py)
         -   check if it succeeds on the [test vectors](https://crypto.stackexchange.com/questions/22338/where-are-the-chacha20-test-vectors-examples)
     -   mitigating factors:
